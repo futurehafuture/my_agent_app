@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 强制让根容器填满窗口 */
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* 防止出现双重滚动条 */
+}
+
+/* 允许拖拽窗口 */
+.draggable {
+  -webkit-app-region: drag;
+}
+
+/* 禁止拖拽 (用于拖拽区域内的按钮，否则按钮无法点击) */
+.non-draggable {
+  -webkit-app-region: no-drag;
+}
