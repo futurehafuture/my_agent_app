@@ -20,3 +20,28 @@ html, body, #root {
 .non-draggable {
   -webkit-app-region: no-drag;
 }
+
+/* KaTeX 排版更接近课本 */
+.katex {
+  font-size: 1.1em;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+}
+
+.katex-display {
+  margin: 1rem 0 1.1rem;
+}
+
+.katex-display > .katex {
+  text-align: center;
+}
+
+.katex .mord,
+.katex .mop,
+.katex .mbin,
+.katex .mrel,
+.katex .mopen,
+.katex .mclose,
+.katex .mpunct {
+  font-family: 'Latin Modern Math', 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif;
+}
