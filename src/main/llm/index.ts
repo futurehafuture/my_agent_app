@@ -1,10 +1,41 @@
 import { LlmChatRequest, LlmChatResponse, LlmProvider, LlmStreamHandlers } from './types'
 import { MockProvider } from './providers/mock'
 import { QwenProvider } from './providers/qwen'
+import { OpenAICompatibleProvider } from './providers/openai-compatible'
 
 const providers: Record<string, LlmProvider> = {
   mock: new MockProvider(),
-  qwen: new QwenProvider()
+  qwen: new QwenProvider(),
+  zhipu: new OpenAICompatibleProvider({
+    id: 'zhipu',
+    name: 'Zhipu (BigModel)',
+    defaultBaseUrl: 'https://open.bigmodel.cn/api/paas/v4'
+  }),
+  minmax: new OpenAICompatibleProvider({
+    id: 'minmax',
+    name: 'MiniMax',
+    defaultBaseUrl: 'https://api.minimax.io/v1'
+  }),
+  deepseek: new OpenAICompatibleProvider({
+    id: 'deepseek',
+    name: 'DeepSeek',
+    defaultBaseUrl: 'https://api.deepseek.com/v1'
+  }),
+  mimo: new OpenAICompatibleProvider({
+    id: 'mimo',
+    name: 'Xiaomi MiMo',
+    defaultBaseUrl: 'https://api.xiaomimimo.com/v1'
+  }),
+  kimi: new OpenAICompatibleProvider({
+    id: 'kimi',
+    name: 'Moonshot Kimi',
+    defaultBaseUrl: 'https://api.moonshot.cn/v1'
+  }),
+  doubao: new OpenAICompatibleProvider({
+    id: 'doubao',
+    name: 'Doubao (Volcengine Ark)',
+    defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3'
+  })
 }
 
 export function listProviders(): { id: string; name: string }[] {

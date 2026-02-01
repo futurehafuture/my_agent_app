@@ -12,8 +12,8 @@ export function SettingsPage({ config, onChange }: { config: AppConfig; onChange
       <div className="flex-1 overflow-y-auto p-6 pt-10 min-h-0">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-gray-400">Settings</div>
-            <Link to="/" className="text-xs text-gray-300 hover:text-white">
+            <div className="text-sm text-[var(--text-muted)]">Settings</div>
+            <Link to="/" className="text-xs text-[var(--text-soft)] hover:text-[var(--text)]">
               返回聊天
             </Link>
           </div>
@@ -22,13 +22,26 @@ export function SettingsPage({ config, onChange }: { config: AppConfig; onChange
             <div className="min-h-[320px]">
               {tab === 'model' ? <SettingsPanel config={config} onChange={onChange} /> : null}
               {tab === 'mcp' ? (
-                <div className="p-4 border border-gray-700 rounded-xl bg-[#2A2B32] text-sm text-gray-300">
+                <div className="p-4 border border-[var(--border)] rounded-xl bg-[var(--bg-panel)] text-sm text-[var(--text-soft)]">
                   MCP 设置开发中…
                 </div>
               ) : null}
               {tab === 'system' ? (
-                <div className="p-4 border border-gray-700 rounded-xl bg-[#2A2B32] text-sm text-gray-300">
-                  系统设置开发中…
+                <div className="p-4 border border-[var(--border)] rounded-xl bg-[var(--bg-panel)] text-sm">
+                  <div className="text-xs text-[var(--text-muted)] mb-3">系统设置</div>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-[var(--text-muted)]">主题</span>
+                    <select
+                      className="bg-[var(--bg-input)] border border-[var(--border)] rounded px-3 py-2 text-[var(--text)]"
+                      value={config.ui?.theme ?? 'dark'}
+                      onChange={(e) =>
+                        onChange({ ...config, ui: { ...config.ui, theme: e.target.value as 'dark' | 'light' } })
+                      }
+                    >
+                      <option value="dark">深色</option>
+                      <option value="light">浅色</option>
+                    </select>
+                  </label>
                 </div>
               ) : null}
             </div>

@@ -10,6 +10,100 @@ const streamControllers = new Map<string, AbortController>()
 export function registerIpcHandlers(): void {
   ipcMain.handle('llm:listProviders', async () => listProviders())
 
+  ipcMain.handle('llm:listModels', async (_event, req) => {
+    const config = loadConfig()
+    const provider = req?.provider ?? config.llm.provider
+    const apiKey = loadApiKey(provider)
+    const baseUrl = (req?.baseUrl ?? config.llm.baseUrl ?? '').replace(/\/$/, '')
+
+    const isKimi = provider === 'kimi'
+
+    const fetchFromApi = async () => {
+      if (!apiKey) throw new Error('Missing API key for model listing')
+      if (!baseUrl) throw new Error('Missing base URL for model listing')
+
+      const url = `${baseUrl}/models`
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${apiKey}`
+        }
+      })
+
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`List models error ${res.status}: ${text}`)
+      }
+
+      const data = await res.json()
+      const raw = Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data?.models)
+          ? data.models
+          : Array.isArray(data)
+            ? data
+            : []
+
+      const ids = raw
+        .map((m: any) => (typeof m === 'string' ? m : m?.id ?? m?.model ?? m?.name))
+        .filter(Boolean)
+
+      return Array.from(new Set(ids))
+    }
+
+    const fetchKimiFromDoc = async () => {
+      const url =
+        'https://platform.moonshot.cn/docs/pricing/chat#%E7%94%9F%E6%88%90%E6%A8%A1%E5%9E%8B-kimi-k2'
+      const res = await fetch(url, { method: 'GET' })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`Kimi doc error ${res.status}: ${text}`)
+      }
+      const html = await res.text()
+      const decode = (input: string) =>
+        input
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+
+      const candidates = new Set<string>()
+      for (const match of html.matchAll(/<code[^>]*>([^<]+)<\/code>/g)) {
+        const text = decode(match[1]).trim()
+        if (!text) continue
+        if (/kimi|moonshot|k2/i.test(text)) candidates.add(text)
+      }
+      for (const match of html.matchAll(/\b(kimi-[a-z0-9._-]+)\b/gi)) {
+        candidates.add(match[1])
+      }
+      for (const match of html.matchAll(/\b(moonshot-[a-z0-9._-]+)\b/gi)) {
+        candidates.add(match[1])
+      }
+      return Array.from(candidates)
+    }
+
+    try {
+      const ids = await fetchFromApi()
+      if (ids.length) return ids
+    } catch (err: any) {
+      if (!isKimi) throw err
+      const message = String(err?.message ?? '')
+      const authFail =
+        message.includes('401') ||
+        message.includes('invalid_authentication') ||
+        message.includes('Invalid Authentication')
+      if (!authFail) throw err
+    }
+
+    if (isKimi) {
+      const ids = await fetchKimiFromDoc()
+      if (ids.length) return ids
+    }
+
+    throw new Error('模型列表获取失败')
+  })
+
   ipcMain.handle('llm:chat', async (_event, req) => {
     const config = loadConfig()
     const apiKey = loadApiKey(req.provider)

@@ -2,6 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme variables */
+:root {
+  --bg-app: #343541;
+  --bg-sidebar: #202123;
+  --bg-panel: #2a2b32;
+  --bg-card-ai: #444654;
+  --bg-card-user: #3a3b44;
+  --bg-input: #40414f;
+  --bg-input-soft: #1f2026;
+  --border: #374151;
+  --text: #ffffff;
+  --text-muted: #9ca3af;
+  --text-soft: #d1d5db;
+  --text-dim: #6b7280;
+  --link: #93c5fd;
+}
+
+.theme-light {
+  color-scheme: light;
+  --bg-app: #f3f5fb;
+  --bg-sidebar: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-card-ai: #f6f7fb;
+  --bg-card-user: #eef2ff;
+  --bg-input: #ffffff;
+  --bg-input-soft: #f7f8fc;
+  --border: #e1e5f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-soft: #334155;
+  --text-dim: #94a3b8;
+  --link: #1d4ed8;
+}
+
+.theme-dark {
+  color-scheme: dark;
+}
+
 /* 强制让根容器填满窗口 */
 html, body, #root {
   width: 100%;
@@ -9,6 +47,8 @@ html, body, #root {
   margin: 0;
   padding: 0;
   overflow: hidden; /* 防止出现双重滚动条 */
+  background: var(--bg-app);
+  color: var(--text);
 }
 
 /* 允许拖拽窗口 */
@@ -44,4 +84,33 @@ html, body, #root {
 .katex .mclose,
 .katex .mpunct {
   font-family: 'Latin Modern Math', 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif;
+}
+
+/* GitHub-like markdown table styling */
+.markdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.875rem;
+}
+
+.markdown-table th,
+.markdown-table td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  vertical-align: top;
+}
+
+.markdown-table th {
+  background: var(--bg-panel);
+  font-weight: 600;
+  text-align: left;
+}
+
+.markdown-table tr:nth-child(even) td {
+  background: var(--bg-input-soft);
+}
+
+.markdown-table tr:hover td {
+  background: var(--bg-panel);
 }

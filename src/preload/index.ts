@@ -4,6 +4,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   llm: {
     listProviders: () => ipcRenderer.invoke('llm:listProviders'),
+    listModels: (req: any) => ipcRenderer.invoke('llm:listModels', req),
     chat: (req: any) => ipcRenderer.invoke('llm:chat', req),
     startStream: (req: any) => ipcRenderer.invoke('llm:stream:start', req),
     stopStream: (streamId: string) => ipcRenderer.invoke('llm:stream:stop', streamId),

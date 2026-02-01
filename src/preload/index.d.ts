@@ -6,6 +6,7 @@ declare global {
     api: {
       llm: {
         listProviders: () => Promise<{ id: string; name: string }[]>
+        listModels: (req: { provider: string; baseUrl?: string }) => Promise<string[]>
         chat: (req: any) => Promise<any>
         startStream: (req: any) => Promise<string>
         stopStream: (streamId: string) => Promise<boolean>

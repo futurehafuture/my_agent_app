@@ -3,8 +3,12 @@ export type AppConfig = {
     provider: string
     model: string
     baseUrl?: string
+    modelOverrides?: Record<string, string[]>
     temperature?: number
     maxTokens?: number
+  }
+  ui: {
+    theme: 'dark' | 'light'
   }
   mcp: {
     enabled: boolean

@@ -7,8 +7,12 @@ export type AppConfig = {
     provider: string
     model: string
     baseUrl?: string
+    modelOverrides?: Record<string, string[]>
     temperature?: number
     maxTokens?: number
+  }
+  ui: {
+    theme: 'dark' | 'light'
   }
   mcp: {
     enabled: boolean
@@ -21,8 +25,12 @@ const defaultConfig: AppConfig = {
     provider: 'qwen',
     model: 'qwen-plus',
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    modelOverrides: {},
     temperature: 0.7,
     maxTokens: 1024
+  },
+  ui: {
+    theme: 'dark'
   },
   mcp: {
     enabled: true,
@@ -43,7 +51,14 @@ export function loadConfig(): AppConfig {
 
   try {
     const raw = readFileSync(file, 'utf-8')
-    return { ...defaultConfig, ...JSON.parse(raw) }
+    const parsed = JSON.parse(raw)
+    return {
+      ...defaultConfig,
+      ...parsed,
+      llm: { ...defaultConfig.llm, ...(parsed?.llm ?? {}) },
+      ui: { ...defaultConfig.ui, ...(parsed?.ui ?? {}) },
+      mcp: { ...defaultConfig.mcp, ...(parsed?.mcp ?? {}) }
+    }
   } catch {
     return { ...defaultConfig }
   }

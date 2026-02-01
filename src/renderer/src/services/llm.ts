@@ -11,10 +11,23 @@ export type LlmChatRequest = {
 export type LlmChatResponse = {
   id: string
   content: string
+  usage?: {
+    promptTokens?: number
+    completionTokens?: number
+    totalTokens?: number
+  }
 }
 
 export async function listProviders() {
   return window.api.llm.listProviders()
+}
+
+export async function listModels(req: { provider: string; baseUrl?: string }): Promise<string[]> {
+  const fn = window.api.llm.listModels
+  if (typeof fn !== 'function') {
+    throw new Error('模型列表接口不可用，请重启应用以更新预加载')
+  }
+  return fn(req)
 }
 
 export async function chat(req: LlmChatRequest): Promise<LlmChatResponse> {
