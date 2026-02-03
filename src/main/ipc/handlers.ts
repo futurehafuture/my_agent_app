@@ -1,7 +1,22 @@
 import { ipcMain } from 'electron'
+import { ProxyAgent } from 'undici'
 import { chat, listProviders, streamChat } from '../llm'
 import { loadConfig, saveConfig, saveApiKey, loadApiKey } from '../config/store'
-import { ensureDefaultMcpConfig } from '../mcp'
+import {
+  ensureDefaultMcpConfig,
+  startMcp,
+  stopMcp,
+  reloadMcp,
+  readMcpConfigFile,
+  writeMcpConfigFile,
+  listMcpServers,
+  listMcpTools,
+  callMcpTool,
+  listMcpResources,
+  readMcpResource,
+  listMcpPrompts,
+  getMcpPrompt
+} from '../mcp'
 import { BrowserWindow } from 'electron'
 import { loadChat, saveChat } from '../chat/store'
 
@@ -172,16 +187,139 @@ export function registerIpcHandlers(): void {
       config.mcp.configPath = ensureDefaultMcpConfig()
       saveConfig(config)
     }
+    if (config.mcp.enabled) {
+      await startMcp(config.mcp.configPath)
+    }
     return config
   })
 
   ipcMain.handle('config:save', async (_event, config) => {
     saveConfig(config)
+    if (config?.mcp?.enabled && config?.mcp?.configPath) {
+      await startMcp(config.mcp.configPath)
+    } else {
+      await stopMcp()
+    }
     return true
+  })
+
+  ipcMain.handle('mcp:reload', async () => {
+    await reloadMcp()
+    return true
+  })
+
+  ipcMain.handle('mcp:config:get', async () => {
+    const config = loadConfig()
+    const path = config.mcp.configPath || ensureDefaultMcpConfig()
+    return readMcpConfigFile(path)
+  })
+
+  ipcMain.handle('mcp:config:save', async (_event, cfg) => {
+    const config = loadConfig()
+    const path = config.mcp.configPath || ensureDefaultMcpConfig()
+    writeMcpConfigFile(path, cfg)
+    await reloadMcp()
+    return true
+  })
+
+  ipcMain.handle('mcp:servers', async () => {
+    return listMcpServers()
+  })
+
+  ipcMain.handle('mcp:tools', async () => {
+    return listMcpTools()
+  })
+
+  ipcMain.handle('mcp:tool:call', async (_event, serverId: string, name: string, args: any) => {
+    return callMcpTool(serverId, name, args)
+  })
+
+  ipcMain.handle('mcp:resources', async () => {
+    return listMcpResources()
+  })
+
+  ipcMain.handle('mcp:resource:read', async (_event, serverId: string, uri: string) => {
+    return readMcpResource(serverId, uri)
+  })
+
+  ipcMain.handle('mcp:prompts', async () => {
+    return listMcpPrompts()
+  })
+
+  ipcMain.handle('mcp:prompt:get', async (_event, serverId: string, name: string, args?: Record<string, string>) => {
+    return getMcpPrompt(serverId, name, args)
+  })
+
+  ipcMain.handle('search:query', async (_event, q: string) => {
+    const config = loadConfig()
+    const provider = config.webSearch.provider
+    const query = String(q || '').trim()
+    if (!query) return []
+    const proxyUrl = config.webSearch.proxyUrl?.trim()
+    const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined
+
+    if (provider === 'google-cse') {
+      const apiKey = config.webSearch.googleApiKey
+      const cx = config.webSearch.googleCx
+      if (!apiKey || !cx) {
+        throw new Error('Missing Google CSE apiKey/cx')
+      }
+      const url = new URL('https://www.googleapis.com/customsearch/v1')
+      url.searchParams.set('key', apiKey)
+      url.searchParams.set('cx', cx)
+      url.searchParams.set('q', query)
+      const res = await fetch(url.toString(), { dispatcher })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`Google CSE error ${res.status}: ${text}`)
+      }
+      const data = await res.json()
+      const items = Array.isArray(data?.items) ? data.items : []
+      return items.map((i: any) => ({
+        title: i?.title ?? '',
+        link: i?.link ?? '',
+        snippet: i?.snippet ?? ''
+      }))
+    }
+
+    if (provider === 'serpapi') {
+      const apiKey = config.webSearch.serpApiKey
+      if (!apiKey) throw new Error('Missing SerpAPI apiKey')
+      const url = new URL('https://serpapi.com/search.json')
+      url.searchParams.set('engine', 'google')
+      url.searchParams.set('q', query)
+      url.searchParams.set('api_key', apiKey)
+      const res = await fetch(url.toString(), { dispatcher })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`SerpAPI error ${res.status}: ${text}`)
+      }
+      const data = await res.json()
+      const items = Array.isArray(data?.organic_results) ? data.organic_results : []
+      return items.map((i: any) => ({
+        title: i?.title ?? '',
+        link: i?.link ?? i?.displayed_link ?? '',
+        snippet: i?.snippet ?? ''
+      }))
+    }
+
+    throw new Error(`Unknown search provider: ${provider}`)
   })
 
   ipcMain.handle('keys:save', async (_event, provider, apiKey) => {
     saveApiKey(provider, apiKey)
+    return true
+  })
+
+  ipcMain.handle('app:log', async (_event, payload) => {
+    try {
+      const msg = typeof payload === 'string' ? payload : JSON.stringify(payload)
+      // eslint-disable-next-line no-console
+      console.log(msg)
+    } catch {
+      // eslint-disable-next-line no-console
+      console.log(payload)
+    }
     return true
   })
 

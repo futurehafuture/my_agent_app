@@ -11,8 +11,16 @@ export type AppConfig = {
     temperature?: number
     maxTokens?: number
   }
+  webSearch: {
+    provider: 'google-cse' | 'serpapi'
+    googleApiKey?: string
+    googleCx?: string
+    serpApiKey?: string
+    proxyUrl?: string
+  }
   ui: {
     theme: 'dark' | 'light'
+    debugLogs?: boolean
   }
   mcp: {
     enabled: boolean
@@ -29,8 +37,12 @@ const defaultConfig: AppConfig = {
     temperature: 0.7,
     maxTokens: 1024
   },
+  webSearch: {
+    provider: 'google-cse'
+  },
   ui: {
-    theme: 'dark'
+    theme: 'dark',
+    debugLogs: false
   },
   mcp: {
     enabled: true,
@@ -56,6 +68,7 @@ export function loadConfig(): AppConfig {
       ...defaultConfig,
       ...parsed,
       llm: { ...defaultConfig.llm, ...(parsed?.llm ?? {}) },
+      webSearch: { ...defaultConfig.webSearch, ...(parsed?.webSearch ?? {}) },
       ui: { ...defaultConfig.ui, ...(parsed?.ui ?? {}) },
       mcp: { ...defaultConfig.mcp, ...(parsed?.mcp ?? {}) }
     }

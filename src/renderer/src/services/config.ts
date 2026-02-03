@@ -7,8 +7,16 @@ export type AppConfig = {
     temperature?: number
     maxTokens?: number
   }
+  webSearch: {
+    provider: 'google-cse' | 'serpapi'
+    googleApiKey?: string
+    googleCx?: string
+    serpApiKey?: string
+    proxyUrl?: string
+  }
   ui: {
     theme: 'dark' | 'light'
+    debugLogs?: boolean
   }
   mcp: {
     enabled: boolean

@@ -17,12 +17,15 @@
   --text-soft: #d1d5db;
   --text-dim: #6b7280;
   --link: #93c5fd;
+  --avatar-user: #4f46e5;
+  --avatar-bot: #34d399;
 }
 
 .theme-light {
   color-scheme: light;
   --bg-app: #f3f5fb;
   --bg-sidebar: #ffffff;
+  --bg-chat: #ffffff;
   --bg-panel: #ffffff;
   --bg-card-ai: #f6f7fb;
   --bg-card-user: #eef2ff;
@@ -34,10 +37,13 @@
   --text-soft: #334155;
   --text-dim: #94a3b8;
   --link: #1d4ed8;
+  --avatar-user: #f59e0b;
+  --avatar-bot: #4ade80;
 }
 
 .theme-dark {
   color-scheme: dark;
+  --bg-chat: var(--bg-app);
 }
 
 /* 强制让根容器填满窗口 */
@@ -113,4 +119,20 @@ html, body, #root {
 
 .markdown-table tr:hover td {
   background: var(--bg-panel);
+}
+
+@keyframes caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.typing-caret {
+  display: inline-block;
+  width: 6px;
+  height: 14px;
+  margin-left: 4px;
+  background: var(--text);
+  vertical-align: -2px;
+  animation: caret-blink 1s step-end infinite;
+  border-radius: 1px;
 }

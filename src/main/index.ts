@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, nativeTheme, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -10,6 +10,7 @@ function createWindow(): void {
     width: 1000,
     height: 800,
     show: false,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#f7f8fb',
     autoHideMenuBar: true, // 隐藏菜单栏
     titleBarStyle: 'hiddenInset', // Mac 上红绿灯样式，Windows 上无边框
     // frame: false, // 如果你是 Windows 用户且想要完全自定义标题栏，解开这个注释
@@ -19,10 +20,6 @@ function createWindow(): void {
       sandbox: false,
       webSecurity: false // 开发时避免跨域问题，生产环境需注意
     }
-  })
-
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -37,6 +34,16 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  const fallbackShowTimer = setTimeout(() => {
+    if (!mainWindow.isDestroyed()) mainWindow.show()
+  }, 8000)
+
+  ipcMain.once('app:ready', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win && !win.isDestroyed()) win.show()
+    clearTimeout(fallbackShowTimer)
+  })
 }
 
 // This method will be called when Electron has finished

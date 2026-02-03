@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
-import { Send, Monitor, Paperclip } from 'lucide-react'
+import { Send, Monitor, Paperclip, Copy, Pencil, Save, X, User, Bot } from 'lucide-react'
 import { AppConfig } from '../services/config'
 import { estimateHistoryTokens, estimateTextTokens } from '../services/TokenService'
 
@@ -13,6 +13,7 @@ export type Message = {
   content: string
   model?: string
   provider?: string
+  createdAt?: number
   usage?: {
     prompt_tokens?: number
     completion_tokens?: number
@@ -20,7 +21,7 @@ export type Message = {
   }
 }
 
-const preprocessMath = (input: string) => {
+  const preprocessMath = (input: string) => {
   let out = input
   out = out.replace(/\\\((.+?)\\\)/g, (_m, expr) => `$${expr}$`)
   out = out.replace(/\\\[((?:.|\n)*?)\\\]/g, (_m, expr) => `$$${expr}$$`)
@@ -46,11 +47,23 @@ const preprocessMath = (input: string) => {
   return out
 }
 
+const formatMessageTime = (ts?: number) => {
+  if (!ts) return ''
+  return new Date(ts).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
 export function ChatPage({
   messages,
   input,
   setInput,
   busy,
+  activeStreamId,
   onSend,
   onStop,
   onUpdateMessage,
@@ -60,22 +73,33 @@ export function ChatPage({
   input: string
   setInput: (v: string) => void
   busy: boolean
+  activeStreamId: string | null
   onSend: () => void
   onStop: () => void
   onUpdateMessage: (id: string, content: string) => void
   config: AppConfig
 }) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesWrapRef = useRef<HTMLDivElement>(null)
+  const [stickToBottom, setStickToBottom] = useState(true)
+  const autoScrollRef = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState('')
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  const scrollToBottom = (behavior: ScrollBehavior) => {
+    autoScrollRef.current = true
+    messagesEndRef.current?.scrollIntoView({ behavior })
+    window.setTimeout(() => {
+      autoScrollRef.current = false
+    }, 0)
   }
 
-  useEffect(scrollToBottom, [messages])
+  useEffect(() => {
+    if (!stickToBottom) return
+    scrollToBottom(activeStreamId ? 'auto' : 'smooth')
+  }, [messages, stickToBottom, activeStreamId])
   useEffect(() => {
     const el = inputRef.current
     if (!el) return
@@ -99,6 +123,50 @@ export function ChatPage({
       const label = lang ?? l ?? ''
       return `\`\`\`${label}\n${nextCode}\`\`\``
     })
+  }
+
+  const extractToolSections = (content: string) => {
+    const sections: { main: string; call?: string; result?: string; error?: string; answer?: string } = { main: content }
+    const markers = Array.from(content.matchAll(/\n(【MCP 工具调用】|【MCP 工具结果】|【MCP 工具错误】|【回答】)/g))
+    if (!markers.length) return sections
+    sections.main = content.slice(0, markers[0].index).trim()
+    for (let i = 0; i < markers.length; i += 1) {
+      const marker = markers[i][1]
+      const start = (markers[i].index ?? 0) + marker.length + 1
+      const end = i + 1 < markers.length ? markers[i + 1].index ?? content.length : content.length
+      const body = content.slice(start, end).trim()
+      if (marker === '【MCP 工具调用】') sections.call = body
+      if (marker === '【MCP 工具结果】') sections.result = body
+      if (marker === '【MCP 工具错误】') sections.error = body
+      if (marker === '【回答】') sections.answer = body
+    }
+    return sections
+  }
+
+  const renderToolSection = (title: string, body?: string) => {
+    if (!body) return null
+    const fenceMatch = body.match(/```[a-z]*\s*([\s\S]*?)\s*```/i)
+    const text = fenceMatch ? fenceMatch[1].trim() : body.trim()
+    return (
+      <details className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--bg-input-soft)]">
+        <summary className="cursor-pointer select-none px-3 py-2 text-xs text-[var(--text-muted)]">{title}</summary>
+        <pre className="overflow-x-auto text-xs text-[var(--text)] p-3">
+          <code className="font-mono whitespace-pre-wrap break-words">{text}</code>
+        </pre>
+      </details>
+    )
+  }
+
+  const renderAnswer = (body?: string) => {
+    if (!body) return null
+    return (
+      <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] p-3">
+        <div className="text-xs text-[var(--text-muted)] mb-2">回答</div>
+        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+          {body}
+        </ReactMarkdown>
+      </div>
+    )
   }
 
   const CodeBlock = ({
@@ -177,74 +245,100 @@ export function ChatPage({
         <div className="max-w-4xl mx-auto w-full text-xs text-[var(--text-soft)]">当前对话总 Token：{totalTokens}</div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 pt-3 space-y-6 scroll-smooth min-h-0 pb-28">
+      <div
+        ref={messagesWrapRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-3 space-y-6 scroll-smooth min-h-0 pb-28"
+        onScroll={() => {
+          const el = messagesWrapRef.current
+          if (!el) return
+          if (autoScrollRef.current) return
+          const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+          setStickToBottom(nearBottom)
+        }}
+      >
         {messages.map((msg) =>
           (() => {
             const turn = msg.role === 'user' ? ++turnIndex : turnIndex
             const showTurn = turn > 0
-            const modelName = msg.model || config.llm.model || 'model'
-            const avatarText = msg.role === 'assistant' ? modelName.slice(0, 2).toUpperCase() : 'Me'
+            const modelName = msg.model || (msg.role === 'assistant' ? '未记录模型' : '')
             const tokenLabel =
               msg.usage?.total_tokens != null ? `${msg.usage?.total_tokens} Token` : `${estimateTextTokens(msg.content)} Token`
+            const timeLabel = formatMessageTime(msg.createdAt)
             let codeIndex = 0
             return (
-              <div key={msg.id} className="max-w-4xl mx-auto w-full">
+              <div key={msg.id} className="max-w-4xl mx-auto w-full min-w-0">
                 <div
-                  className={`flex gap-4 rounded-xl px-5 py-4 ${
+                  className={`flex gap-4 rounded-xl px-5 py-4 min-w-0 ${
                     msg.role === 'assistant' ? 'bg-[var(--bg-card-ai)]' : 'bg-[var(--bg-card-user)]'
                   }`}
                 >
                   <div
                     className={`w-8 h-8 rounded-sm flex items-center justify-center shrink-0 ${
-                      msg.role === 'assistant' ? 'bg-green-500' : 'bg-indigo-500'
+                      msg.role === 'assistant' ? 'bg-[var(--avatar-bot)]' : 'bg-[var(--avatar-user)]'
                     }`}
                   >
-                    {avatarText}
+                    {msg.role === 'assistant' ? <Bot size={16} /> : <User size={16} />}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="text-xs text-[var(--text-muted)] mb-2">
                       {showTurn ? `第 ${turn} 轮` : '引导'}
                       {msg.role === 'assistant' ? ` · ${modelName}` : ''}
                       {` · ${tokenLabel}`}
+                      {timeLabel ? ` · ${timeLabel}` : ''}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mb-3">
-                      <button
-                        className="hover:text-[var(--text)]"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(msg.content)
-                            setCopiedMessageId(msg.id)
-                            setTimeout(() => setCopiedMessageId(null), 1000)
-                          } catch {
-                            // ignore
-                          }
-                        }}
-                      >
-                        {copiedMessageId === msg.id ? '已复制' : '复制回答'}
-                      </button>
-                      <button
-                        className="hover:text-[var(--text)]"
-                        onClick={() => {
-                          if (editingMessageId === msg.id) {
-                            setEditingMessageId(null)
-                            return
-                          }
-                          setEditingMessageId(msg.id)
-                          setEditDraft(msg.content)
-                        }}
-                      >
-                        {editingMessageId === msg.id ? '取消' : '编辑回答'}
-                      </button>
-                      {editingMessageId === msg.id ? (
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-3">
+                      <div className="relative group">
                         <button
-                          className="text-green-500 hover:text-green-400"
-                          onClick={() => {
-                            onUpdateMessage(msg.id, editDraft)
-                            setEditingMessageId(null)
+                          className="p-1 rounded hover:bg-[var(--bg-panel)] hover:text-[var(--text)]"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(msg.content)
+                              setCopiedMessageId(msg.id)
+                              setTimeout(() => setCopiedMessageId(null), 1000)
+                            } catch {
+                              // ignore
+                            }
                           }}
                         >
-                          保存
+                          <Copy size={14} />
                         </button>
+                        <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-[var(--bg-panel)] px-2 py-0.5 text-[11px] text-[var(--text-soft)] opacity-0 shadow-sm group-hover:opacity-100">
+                          {copiedMessageId === msg.id ? '已复制' : '复制回答'}
+                        </div>
+                      </div>
+                      <div className="relative group">
+                        <button
+                          className="p-1 rounded hover:bg-[var(--bg-panel)] hover:text-[var(--text)]"
+                          onClick={() => {
+                            if (editingMessageId === msg.id) {
+                              setEditingMessageId(null)
+                              return
+                            }
+                            setEditingMessageId(msg.id)
+                            setEditDraft(msg.content)
+                          }}
+                        >
+                          {editingMessageId === msg.id ? <X size={14} /> : <Pencil size={14} />}
+                        </button>
+                        <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-[var(--bg-panel)] px-2 py-0.5 text-[11px] text-[var(--text-soft)] opacity-0 shadow-sm group-hover:opacity-100">
+                          {editingMessageId === msg.id ? '取消编辑' : '编辑回答'}
+                        </div>
+                      </div>
+                      {editingMessageId === msg.id ? (
+                        <div className="relative group">
+                          <button
+                            className="p-1 rounded hover:bg-[var(--bg-panel)] text-green-500 hover:text-green-400"
+                            onClick={() => {
+                              onUpdateMessage(msg.id, editDraft)
+                              setEditingMessageId(null)
+                            }}
+                          >
+                            <Save size={14} />
+                          </button>
+                          <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-[var(--bg-panel)] px-2 py-0.5 text-[11px] text-[var(--text-soft)] opacity-0 shadow-sm group-hover:opacity-100">
+                            保存
+                          </div>
+                        </div>
                       ) : null}
                     </div>
                     {editingMessageId === msg.id ? (
@@ -254,8 +348,12 @@ export function ChatPage({
                         onChange={(e) => setEditDraft(e.target.value)}
                       />
                     ) : (
-                      <div className="max-w-none text-sm leading-6 select-text text-[var(--text)]">
-                        <ReactMarkdown
+                      <div className="max-w-none text-sm leading-6 select-text text-[var(--text)] break-words">
+                        {(() => {
+                          const sections = extractToolSections(preprocessMath(msg.content))
+                          return (
+                            <>
+                              <ReactMarkdown
                           remarkPlugins={[remarkGfm, remarkMath]}
                           rehypePlugins={[rehypeKatex]}
                           components={{
@@ -325,8 +423,16 @@ export function ChatPage({
                             }
                           }}
                         >
-                          {preprocessMath(msg.content)}
-                        </ReactMarkdown>
+                          {sections.main}
+                              </ReactMarkdown>
+                              {renderToolSection('MCP 工具调用', sections.call)}
+                              {renderToolSection('MCP 工具结果', sections.result)}
+                              {renderToolSection('MCP 工具错误', sections.error)}
+                              {renderAnswer(sections.answer)}
+                              {msg.id === activeStreamId ? <span className="typing-caret" /> : null}
+                            </>
+                          )
+                        })()}
                       </div>
                     )}
                   </div>

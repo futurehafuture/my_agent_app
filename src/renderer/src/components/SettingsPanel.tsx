@@ -11,6 +11,7 @@ export function SettingsPanel({ config, onChange }: { config: AppConfig; onChang
   const [validateMsg, setValidateMsg] = useState('')
   const [modelsLoading, setModelsLoading] = useState(false)
   const [modelsError, setModelsError] = useState('')
+  const [modelsErrorLevel, setModelsErrorLevel] = useState<'info' | 'error'>('error')
   const [remoteModels, setRemoteModels] = useState<string[]>([])
   const [editingModels, setEditingModels] = useState(false)
   const [modelDrafts, setModelDrafts] = useState<string[]>([])
@@ -94,10 +95,16 @@ export function SettingsPanel({ config, onChange }: { config: AppConfig; onChang
 
   useEffect(() => {
     let active = true
+    if (!apiKey) {
+      setModelsError('')
+      setModelsErrorLevel('info')
+      setRemoteModels([])
+    }
     const run = async () => {
       if (!apiKey && config.llm.provider !== 'kimi') return
       setModelsLoading(true)
       setModelsError('')
+      setModelsErrorLevel('error')
       try {
         const remote = await listModels({ provider: config.llm.provider, baseUrl: config.llm.baseUrl })
         if (!active) return
@@ -106,7 +113,14 @@ export function SettingsPanel({ config, onChange }: { config: AppConfig; onChang
         }
       } catch (err: any) {
         if (!active) return
-        setModelsError(err?.message ?? '模型列表获取失败')
+        const raw = String(err?.message ?? '')
+        if (raw.includes('Missing API key for model listing')) {
+          setModelsError('未配置 API Key，已显示默认模型列表')
+          setModelsErrorLevel('info')
+        } else {
+          setModelsError(err?.message ?? '模型列表获取失败')
+          setModelsErrorLevel('error')
+        }
         setRemoteModels([])
       } finally {
         if (!active) return
@@ -201,7 +215,11 @@ export function SettingsPanel({ config, onChange }: { config: AppConfig; onChang
             />
           )}
           {modelsLoading ? <span className="text-xs text-[var(--text-dim)]">模型列表加载中...</span> : null}
-          {!modelsLoading && modelsError ? <span className="text-xs text-red-500">{modelsError}</span> : null}
+          {!modelsLoading && modelsError ? (
+            <span className={`text-xs ${modelsErrorLevel === 'info' ? 'text-[var(--text-dim)]' : 'text-red-500'}`}>
+              {modelsError}
+            </span>
+          ) : null}
         </label>
         <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
           <span>API 文档</span>
@@ -218,6 +236,12 @@ export function SettingsPanel({ config, onChange }: { config: AppConfig; onChang
             <span className="text-[var(--text-dim)]">未配置</span>
           )}
         </div>
+        {!apiKey ? (
+          <div className="flex items-center gap-2 text-xs text-[var(--text-dim)]">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-500/80" />
+            <span>当前厂商未配置 API Key，将显示默认模型列表</span>
+          </div>
+        ) : null}
         <div className="border border-[var(--border)] rounded p-3 bg-[var(--bg-input-soft)]">
           <div className="flex items-center justify-between">
             <span className="text-xs text-[var(--text-soft)]">模型列表自定义</span>

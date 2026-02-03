@@ -22,6 +22,14 @@ export async function listProviders() {
   return window.api.llm.listProviders()
 }
 
+export async function searchWeb(query: string) {
+  const mod = window.api.search
+  if (!mod || typeof mod.query !== 'function') {
+    throw new Error('搜索模块未就绪，请重启应用后再试')
+  }
+  return mod.query(query)
+}
+
 export async function listModels(req: { provider: string; baseUrl?: string }): Promise<string[]> {
   const fn = window.api.llm.listModels
   if (typeof fn !== 'function') {

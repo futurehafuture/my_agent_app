@@ -1,0 +1,59 @@
+{
+  "cookies": [
+    {
+      "name": "AEC",
+      "value": "AaJma5v4kN8n20BtIctuWVWzCalfP-1E-fEwKzLnRSL6_OVHVbGTk7Ruur4",
+      "domain": ".google.com",
+      "path": "/",
+      "expires": 1785606654.826129,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "__Secure-BUCKET",
+      "value": "CI8G",
+      "domain": ".google.com",
+      "path": "/",
+      "expires": 1785606654.826219,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "__Secure-STRP",
+      "value": "AD6Dogt4ZVazw_xV9__69pl3ss-Y13yzxhPXKXnBhnUN4eCNotFCgFuSAs19VTLpehC5FNJpZ87Wc4xetR_uxxhEfjfzZzlQj42s",
+      "domain": ".google.com",
+      "path": "/",
+      "expires": 1770054959.782922,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Strict"
+    },
+    {
+      "name": "NID",
+      "value": "528=ONl0Z1HCzMBWknoBpXG2yjYw2_rUdFsMxH_blCeRbMTRO9KTGUMU9NLnnKadSBAVCemN6ixTRme9CQHxGMgwTUbmJyXULWbmNE4DGlFZtMD2sEhijxKT2O1jJvT6fmb6Oke-NlXMR0RzWKIkw1VP6KR4b5oDqoIbpIzocr_9MpaaVC00dAJdHNNYVT_USCTI5B7hz0Dr-knnlEMyVSz2ZScGcb0oH5lsu7IXrgmx9fb0bFUgb7U1bwR-y_pBmG0zLkOSATTZKzU",
+      "domain": ".google.com",
+      "path": "/",
+      "expires": 1785865854.783,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://www.google.com",
+      "localStorage": [
+        {
+          "name": "sb_wiz.zpc.gws-wiz.",
+          "value": "{\"0\":[],\"1\":{\"av\":\"-3352147186565169523\",\"k\":1,\"q\":\"FF2hP4x0XyLcAUUcKp0J49VIvMM\"}}"
+        },
+        {
+          "name": "sb_wiz.qc",
+          "value": "1"
+        }
+      ]
+    }
+  ]
+}
