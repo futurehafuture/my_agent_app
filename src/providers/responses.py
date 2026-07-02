@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import os
 from typing import Any
@@ -66,6 +67,8 @@ class ResponsesProvider:
                 )
             )
 
+        reasoning = getattr(response, "reasoning_content", None)
+
         return ModelOutput(
             text=response.output_text,
             tool_calls=tool_calls,
@@ -73,6 +76,7 @@ class ResponsesProvider:
                 "output": response_output,
                 "output_text": response.output_text,
             },
+            reasoning=reasoning,
         )
 
     def append_model_output(

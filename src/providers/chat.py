@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import os
 from typing import Any
@@ -65,6 +66,10 @@ class ChatCompletionsProvider:
                 )
             )
 
+        reasoning = getattr(assistant_message, "reasoning_content", None)
+        if not reasoning and isinstance(assistant_message_dict, dict):
+            reasoning = assistant_message_dict.get("reasoning_content")
+
         return ModelOutput(
             text=assistant_message.content or "",
             tool_calls=tool_calls,
@@ -72,6 +77,7 @@ class ChatCompletionsProvider:
                 "message": assistant_message_dict,
                 "finish_reason": response.choices[0].finish_reason,
             },
+            reasoning=reasoning,
         )
 
     def append_model_output(

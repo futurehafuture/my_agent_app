@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -16,6 +17,7 @@ class ModelOutput:
     text: str
     tool_calls: list[ToolCall] = field(default_factory=list)
     raw: Any | None = None
+    reasoning: str | None = None
 
 
 class Provider(Protocol):

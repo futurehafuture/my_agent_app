@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Workspace — AI Productivity Studio</title>
+  <meta name="description" content="An advanced AI agent workspace for coding, data analysis, document processing, web research, and more.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <div class="app-layout">
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- LEFT SIDEBAR                                -->
+    <!-- ═══════════════════════════════════════════ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="app-logo">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="8" fill="#6C5CE7"/>
+            <path d="M16 6L20.5 10.5L16 15L11.5 10.5L16 6Z" fill="white" opacity="0.9"/>
+            <path d="M22 12L26.5 16.5L22 21L17.5 16.5L22 12Z" fill="white" opacity="0.7"/>
+            <path d="M10 12L14.5 16.5L10 21L5.5 16.5L10 12Z" fill="white" opacity="0.7"/>
+            <path d="M16 18L20.5 22.5L16 27L11.5 22.5L16 18Z" fill="white" opacity="0.5"/>
+          </svg>
+        </div>
+        <span class="app-name">Agent</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <!-- New Run button -->
+        <button class="nav-item nav-item--new-run" id="navNewRun">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>New Run</span>
+        </button>
+
+        <div class="nav-separator"></div>
+
+        <!-- Navigation items -->
+        <a class="nav-item active" data-nav="home" id="navHome">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span>Home</span>
+        </a>
+
+        <a class="nav-item" data-nav="projects" id="navProjects">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"></path>
+          </svg>
+          <span>Projects</span>
+        </a>
+
+        <a class="nav-item" data-nav="files" id="navFiles">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          <span>Files</span>
+        </a>
+
+        <a class="nav-item" data-nav="agents" id="navAgents">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+            <circle cx="12" cy="5" r="3"></circle>
+            <circle cx="9" cy="16" r="1" fill="currentColor"></circle>
+            <circle cx="15" cy="16" r="1" fill="currentColor"></circle>
+          </svg>
+          <span>Agents</span>
+        </a>
+
+        <a class="nav-item" data-nav="mcp" id="navMcp">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span>MCP</span>
+        </a>
+
+        <a class="nav-item" data-nav="skills" id="navSkills">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span>Skills</span>
+        </a>
+
+        <a class="nav-item" data-nav="history" id="navHistory">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>History</span>
+        </a>
+
+        <div class="nav-separator"></div>
+
+        <a class="nav-item" data-nav="settings" id="navSettings">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path>
+          </svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">B</div>
+          <div class="user-info">
+            <span class="user-name">Bruis</span>
+            <span class="user-plan">Pro Plan</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- CENTER — MODEL STREAM                       -->
+    <!-- ═══════════════════════════════════════════ -->
+    <main class="center">
+
+      <!-- Run Header -->
+      <header class="run-header" id="runHeader">
+        <div class="run-header-left">
+          <h1 class="run-title" id="runTitle">New Run</h1>
+          <div class="run-meta">
+            <span class="model-badge" id="modelBadge">
+              <span class="model-dot"></span>
+              …
+            </span>
+            <span class="status-pill status--completed" id="statusPill">
+              <span class="status-dot"></span>
+              Ready
+            </span>
+            <span class="run-stat" id="runRuntime">
+              <svg class="stat-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              0s
+            </span>
+            <span class="run-stat" id="runToolCount">
+              <svg class="stat-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"></path>
+              </svg>
+              0 tools
+            </span>
+          </div>
+        </div>
+        <div class="run-header-right">
+          <div class="view-toggle" id="viewToggle">
+            <button class="toggle-btn active" data-view="readable">Readable</button>
+            <button class="toggle-btn" data-view="raw">Raw Events</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Stream Area -->
+      <div class="stream-container" id="streamContainer">
+        <div class="stream" id="stream">
+          <!-- Stream blocks will be rendered by app.js -->
+        </div>
+      </div>
+
+      <!-- Composer -->
+      <div class="composer" id="composer">
+        <div class="composer-inner">
+          <div class="composer-input-row">
+            <textarea
+              class="composer-textarea"
+              id="composerInput"
+              placeholder="Ask the agent to do anything…"
+              rows="1"
+            ></textarea>
+          </div>
+          <div class="composer-toolbar">
+            <div class="composer-actions-left">
+              <button class="composer-btn" id="btnAttach" title="Attach file">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
+                </svg>
+                <span class="btn-label">Attach</span>
+              </button>
+              <button class="composer-btn" id="btnTool" title="Select tool">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"></path>
+                </svg>
+                <span class="btn-label">Tool</span>
+              </button>
+              <button class="composer-btn" id="btnSkill" title="Select skill">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                <span class="btn-label">Skill</span>
+              </button>
+              <button class="composer-btn" id="btnMcp" title="MCP">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span class="btn-label">MCP</span>
+              </button>
+              <button class="composer-btn" id="btnVoice" title="Voice input">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 01-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+                <span class="btn-label">Voice</span>
+              </button>
+            </div>
+            <div class="composer-actions-right">
+              <button class="composer-btn composer-btn--send" id="btnSend" title="Send message">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- RIGHT PANEL — CONTEXT                       -->
+    <!-- ═══════════════════════════════════════════ -->
+    <aside class="context-panel" id="contextPanel">
+      <div class="panel-header">
+        <span class="panel-title">Context</span>
+        <button class="panel-collapse-btn" id="panelCollapseBtn" title="Collapse panel">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="panel-body" id="panelBody">
+
+        <!-- Current Files -->
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <svg class="panel-section-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <span>Current Files</span>
+            <span class="panel-badge">3</span>
+          </div>
+          <ul class="panel-list" id="panelFiles">
+            <li class="panel-list-item">
+              <span class="file-icon file-icon--csv">CSV</span>
+              <span class="file-name">sales_q2.csv</span>
+              <span class="file-size">2.4 MB</span>
+            </li>
+            <li class="panel-list-item">
+              <span class="file-icon file-icon--pdf">PDF</span>
+              <span class="file-name">sales_report.pdf</span>
+              <span class="file-size">1.1 MB</span>
+            </li>
+            <li class="panel-list-item">
+              <span class="file-icon file-icon--img">PNG</span>
+              <span class="file-name">revenue_trend.png</span>
+              <span class="file-size">245 KB</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Available Tools -->
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <svg class="panel-section-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"></path>
+            </svg>
+            <span>Available Tools</span>
+            <span class="panel-badge">6</span>
+          </div>
+          <ul class="panel-list" id="panelTools">
+            <li class="panel-list-item">
+              <span class="tool-dot tool-dot--active"></span>
+              <span class="tool-name">read_file</span>
+            </li>
+            <li class="panel-list-item">
+              <span class="tool-dot tool-dot--active"></span>
+              <span class="tool-name">write_file</span>
+            </li>
+            <li class="panel-list-item">
+              <span class="tool-dot tool-dot--active"></span>
+              <span class="tool-name">run_python</span>
+            </li>
+            <li class="panel-list-item">
+              <span class="tool-dot tool-dot--active"></span>
+              <span class="tool-name">web_search</span>
+            </li>
+            <li class="panel-list-item">
+              <span class="tool-dot tool-dot--active"></span>
+              <span class="tool-name">calculator</span>
+            </li>
+            <li class="panel-list-item">
+              <span class="tool-dot tool-dot--active"></span>
+              <span class="tool-name">get_time</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- MCP Servers -->
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <svg class="panel-section-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span>MCP Servers</span>
+            <span class="panel-badge">2</span>
+          </div>
+          <ul class="panel-list" id="panelMcp">
+            <li class="panel-list-item">
+              <span class="mcp-status mcp-status--connected"></span>
+              <span class="mcp-name">filesystem</span>
+              <span class="mcp-tools">12 tools</span>
+            </li>
+            <li class="panel-list-item">
+              <span class="mcp-status mcp-status--connected"></span>
+              <span class="mcp-name">browser</span>
+              <span class="mcp-tools">5 tools</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Skills -->
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <svg class="panel-section-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            <span>Skills</span>
+            <span class="panel-badge">3</span>
+          </div>
+          <ul class="panel-list" id="panelSkills">
+            <li class="panel-list-item">
+              <span class="skill-icon">📊</span>
+              <span class="skill-name">Data Analysis</span>
+            </li>
+            <li class="panel-list-item">
+              <span class="skill-icon">📝</span>
+              <span class="skill-name">Report Generation</span>
+            </li>
+            <li class="panel-list-item">
+              <span class="skill-icon">🔍</span>
+              <span class="skill-name">Web Research</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Model Settings -->
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <svg class="panel-section-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09"></path>
+            </svg>
+            <span>Model Settings</span>
+          </div>
+          <div class="settings-grid" id="panelSettings">
+            <div class="setting-row">
+              <span class="setting-label">Temperature</span>
+              <span class="setting-value">0.7</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Max Tokens</span>
+              <span class="setting-value">4,096</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Top P</span>
+              <span class="setting-value">1.0</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Stream</span>
+              <span class="setting-value setting-value--on">Enabled</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Permissions -->
+        <div class="panel-section">
+          <div class="panel-section-header">
+            <svg class="panel-section-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0110 0v4"></path>
+            </svg>
+            <span>Permissions</span>
+          </div>
+          <div class="permissions-grid" id="panelPermissions">
+            <div class="permission-row">
+              <span class="permission-label">File Access</span>
+              <span class="permission-toggle permission-toggle--on">Granted</span>
+            </div>
+            <div class="permission-row">
+              <span class="permission-label">Network</span>
+              <span class="permission-toggle permission-toggle--on">Granted</span>
+            </div>
+            <div class="permission-row">
+              <span class="permission-label">Code Execution</span>
+              <span class="permission-toggle permission-toggle--on">Granted</span>
+            </div>
+            <div class="permission-row">
+              <span class="permission-label">Shell Access</span>
+              <span class="permission-toggle permission-toggle--off">Denied</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Panel expand button (shown when panel is collapsed) -->
+    <button class="panel-expand-btn hidden" id="panelExpandBtn" title="Show context panel">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
