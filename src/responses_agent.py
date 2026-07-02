@@ -1,5 +1,6 @@
 import json
 import os
+from dataclasses import dataclass, field
 from typing import Any
 
 from openai import OpenAI
@@ -12,6 +13,12 @@ SYSTEM_PROMPT = (
     "Use tools when useful. "
     "After receiving tool results, answer the user directly."
 )
+
+
+@dataclass
+class AgentRun:
+    answer: str
+    trace: list[dict[str, Any]] = field(default_factory=list)
 
 
 def create_client() -> OpenAI:
@@ -27,7 +34,7 @@ def run_responses_agent(
     model: str,
     history: list[dict[str, str]] | None = None,
     max_tool_iterations: int = 16,
-) -> str:
+) -> AgentRun:
     client = create_client()
 
     input_items: list[dict[str, Any]] = [
@@ -38,13 +45,40 @@ def run_responses_agent(
 
     tool_schemas = [tool["responses_schema"] for tool in TOOLS.values()]
     tool_iterations = 0
+    trace: list[dict[str, Any]] = []
 
     while True:
+        iteration = tool_iterations + 1
+        trace.append(
+            {
+                "type": "model_request",
+                "api": "responses",
+                "iteration": iteration,
+                "model": model,
+                "input": input_items,
+                "tools": tool_schemas,
+            }
+        )
+
         response = client.responses.create(
             model=model,
             input=input_items,
             tools=tool_schemas,
             temperature=0,
+        )
+
+        response_output = [
+            item.model_dump(exclude_none=True)
+            for item in response.output
+        ]
+        trace.append(
+            {
+                "type": "model_response",
+                "api": "responses",
+                "iteration": iteration,
+                "output": response_output,
+                "output_text": response.output_text,
+            }
         )
 
         function_calls = [
@@ -55,7 +89,7 @@ def run_responses_agent(
 
         # The model is done when it does not ask for more tools.
         if not function_calls:
-            return response.output_text
+            return AgentRun(answer=response.output_text, trace=trace)
 
         tool_iterations += 1
         if tool_iterations > max_tool_iterations:
@@ -63,10 +97,7 @@ def run_responses_agent(
                 f"Agent exceeded max_tool_iterations={max_tool_iterations}"
             )
 
-        input_items.extend(
-            item.model_dump(exclude_none=True)
-            for item in response.output
-        )
+        input_items.extend(response_output)
 
         for function_call in function_calls:
             function_name = function_call.name
@@ -82,10 +113,22 @@ def run_responses_agent(
             else:
                 tool_result = run_local_tool(function_name, arguments)
 
-            input_items.append(
+            function_call_output = {
+                "type": "function_call_output",
+                "call_id": function_call.call_id,
+                "output": json.dumps(tool_result, ensure_ascii=False),
+            }
+            input_items.append(function_call_output)
+
+            trace.append(
                 {
-                    "type": "function_call_output",
+                    "type": "tool_result",
+                    "api": "responses",
+                    "iteration": iteration,
+                    "tool_name": function_name,
                     "call_id": function_call.call_id,
-                    "output": json.dumps(tool_result, ensure_ascii=False),
+                    "arguments": arguments if "arguments" in locals() else {},
+                    "result": tool_result,
+                    "function_call_output": function_call_output,
                 }
             )
