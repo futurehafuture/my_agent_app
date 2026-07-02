@@ -1,21 +1,26 @@
 import json
 from urllib.parse import unquote
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.agents.agent_runner import run_task
 from app.agents.router_agent import route_task
-from app.models import AgentRunResult
 from app.runtime.diff_apply import apply_workspace_to_source
 from app.runtime.mcp_manager import add_mcp_server, list_mcp_servers, remove_mcp_server
 from app.runtime.run_store import get_paths
+from app.runtime.settings_manager import apply_settings_to_env, load_settings, save_settings
+from app.runtime.trace_manager import list_traces, read_trace
 from app.runtime.workspace_manager import create_task_workspace
 from app.tools.browser_tools import web_search
 
-app = FastAPI(title="My Agent App Backend", version="0.3.0")
+load_dotenv()
+apply_settings_to_env()
+
+app = FastAPI(title="My Agent App Backend", version="0.4.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,13 +48,44 @@ class ApplyDiffRequest(BaseModel):
 class McpServerRequest(BaseModel):
     name: str
     command: str
-    args: list[str] = []
-    env: dict[str, str] = {}
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, str] = Field(default_factory=dict)
+
+
+class LlmSettingsRequest(BaseModel):
+    provider: str | None = None
+    agent_model: str | None = None
+    openai_api_key: str | None = None
+    deepseek_api_key: str | None = None
+    deepseek_base_url: str | None = None
+    deepseek_model: str | None = None
+    save_traces: bool | None = None
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "my-agent-app-backend"}
+
+
+@app.get("/settings/llm")
+def get_llm_settings() -> dict[str, object]:
+    return load_settings(mask_secrets=True)
+
+
+@app.post("/settings/llm")
+def update_llm_settings(request: LlmSettingsRequest) -> dict[str, object]:
+    return save_settings(request.model_dump(exclude_none=True))
+
+
+@app.get("/traces")
+def get_traces(limit: int = 50) -> list[dict[str, object]]:
+    return list_traces(limit=limit)
+
+
+@app.get("/traces/{task_id}")
+def get_trace(task_id: str) -> dict[str, object]:
+    trace = read_trace(task_id)
+    return trace or {"error": "trace not found", "task_id": task_id}
 
 
 @app.post("/tasks/plan")
