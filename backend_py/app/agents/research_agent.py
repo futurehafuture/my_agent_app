@@ -1,17 +1,20 @@
 from app.models import AgentRunResult, RunEvent
+from app.tools.browser_tools import web_search
 
 
 def run_research_agent(task_id: str, task: str) -> AgentRunResult:
-    notes = f"""# Research Task
+    results = web_search(task, max_results=6)
+    lines = ["# Research Brief", "", f"Query: {task}", ""]
+    for index, item in enumerate(results, start=1):
+        lines.append(f"## {index}. {item.get('title', 'Untitled')}")
+        lines.append(item.get("url", ""))
+        lines.append(item.get("snippet", ""))
+        lines.append("")
 
-{task}
-
-This minimal local version does not browse the web from the backend yet. Recommended next step: add a search provider tool and require citations for sourced claims.
-"""
     return AgentRunResult(
         task_id=task_id,
         task_type="research",
-        summary="Research Agent created a research brief placeholder. Add web/search tools next.",
-        events=[RunEvent(id="brief", title="Research brief", detail="Generated local placeholder", state="done", meta="offline")],
-        artifacts={"research_brief.md": notes},
+        summary=f"Research Agent searched the web and collected {len(results)} result(s).",
+        events=[RunEvent(id="search", title="Browser search", detail=f"{len(results)} result cards", state="done", meta="web")],
+        artifacts={"research_brief.md": "\n".join(lines)},
     )
