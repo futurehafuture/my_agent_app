@@ -7,6 +7,7 @@ from app.agents.router_agent import route_task
 from app.agents.sdk_toolkit import AgentWorkspace, prepare_code_workspace, prepare_data_workspace, prepare_file_workspace
 from app.models import AgentRunResult, ApprovalRequest, RunEvent
 from app.runtime.run_store import save_run
+from app.runtime.trace_manager import save_trace
 from app.runtime.workspace_manager import create_task_workspace
 
 
@@ -23,6 +24,13 @@ def run_task(
     loop, handoffs, tool calls, and final answer are handled by OpenAI Agents SDK Runner.
     """
     task_id = f"task-{uuid4().hex[:10]}"
+    request_snapshot = {
+        "message": message,
+        "selected_agent": selected_agent,
+        "project_path": project_path,
+        "data_path": data_path,
+        "allowed_folder": allowed_folder,
+    }
     decision = route_task(message, preferred_agent=selected_agent)
     profile = get_agent_profile(decision.task_type)
     workspace_info = create_task_workspace(decision.task_type)
@@ -41,7 +49,9 @@ def run_task(
         if decision.task_type == "code":
             prepare_code_workspace(workspace, project_path)
             if not workspace.repo:
-                return _missing_input(task_id, decision.task_type, workspace_info, "Code Agent needs an authorized project folder. Click 授权目录 first.")
+                result = _missing_input(task_id, decision.task_type, workspace_info, "Code Agent needs an authorized project folder. Click 授权目录 first.")
+                save_trace(result, request=request_snapshot, extra={"decision": decision.model_dump(), "profile": profile.display_name})
+                return result
         elif decision.task_type == "data":
             prepare_data_workspace(workspace, data_path)
         elif decision.task_type == "file":
@@ -56,6 +66,17 @@ def run_task(
             base_events=events,
         )
         save_run(sdk_output.result, source_path=sdk_output.source_path, workspace_repo=sdk_output.workspace_repo)
+        save_trace(
+            sdk_output.result,
+            request=request_snapshot,
+            extra={
+                "decision": decision.model_dump(),
+                "profile": profile.display_name,
+                "tool_logs": workspace.tool_logs,
+                "source_path": sdk_output.source_path,
+                "workspace_repo": sdk_output.workspace_repo,
+            },
+        )
         return sdk_output.result
 
     except Exception as exc:
@@ -69,6 +90,7 @@ def run_task(
             error=str(exc),
         )
         save_run(result)
+        save_trace(result, request=request_snapshot, extra={"decision": decision.model_dump(), "profile": profile.display_name})
         return result
 
 
