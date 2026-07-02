@@ -2,10 +2,11 @@ import os
 import shutil
 from pathlib import Path
 
+from app.agents.deepseek_tool_agent import DeepSeekToolAgent
 from app.models import AgentRunResult, ApprovalRequest, RunEvent
-from app.runtime.permissions import PermissionError
+from app.runtime.run_store import save_run
 from app.tools.diff_tools import directory_diff, git_diff
-from app.tools.shell_tools import suggest_validation_commands
+from app.tools.shell_tools import run_command, suggest_validation_commands
 
 IGNORE_DIRS = {".git", "node_modules", ".next", "dist", "build", "out", ".venv", "__pycache__"}
 
@@ -28,32 +29,45 @@ def run_code_agent(task_id: str, task: str, workspace_root: Path, project_path: 
     _copy_project(source, repo)
     tree = _project_tree(repo)
     commands = suggest_validation_commands(repo)
-    diff = git_diff(repo) or directory_diff(source, repo)
 
     events = [
         RunEvent(id="copy", title="Project copied", detail=f"{source} -> {repo}", state="done", meta="sandbox"),
         RunEvent(id="inspect", title="Project inspected", detail=f"Found {len(tree.splitlines())} visible entries.", state="done", meta="read-only"),
-        RunEvent(id="validate-plan", title="Validation planned", detail=", ".join(commands) if commands else "No obvious build/test command detected.", state="done", meta="commands"),
     ]
 
-    ai_summary = _run_optional_deepseek_loop(task, repo, tree, commands)
+    agent = DeepSeekToolAgent(repo)
+    ai_summary = agent.run(task, tree)
+    if ai_summary:
+        events.append(RunEvent(id="deepseek-tools", title="DeepSeek tool loop", detail=f"{len(agent.logs)} tool call(s)", state="done", meta="tool-calling"))
+    else:
+        events.append(RunEvent(id="deepseek-skipped", title="DeepSeek skipped", detail="Set DEEPSEEK_API_KEY to enable full tool-calling loop.", state="pending", meta="offline"))
+
+    validation_log = _run_validation_and_repair(task, repo, commands, agent, events)
+    diff = git_diff(repo) or directory_diff(source, repo)
+
     summary = ai_summary or (
         "Code Agent completed a safe project inspection. The project was copied into a sandbox workspace, "
         "visible structure was summarized, and likely validation commands were detected. Real source files were not changed."
     )
+    if validation_log:
+        summary += "\n\nValidation summary:\n" + validation_log[:3000]
 
     approvals = [
-        ApprovalRequest(id="run-command", title="Run validation command", reason="Shell commands should be reviewed before execution.", risk="needs_approval", payload={"commands": commands}),
-        ApprovalRequest(id="apply-diff", title="Apply sandbox diff", reason="Changes should be reviewed before writing back to the real project.", risk="dangerous"),
+        ApprovalRequest(id="run-command", title="Run more validation commands", reason="Additional shell commands should be reviewed before execution.", risk="needs_approval", payload={"commands": commands}),
+        ApprovalRequest(id="apply-diff", title="Apply sandbox diff", reason="Changes should be reviewed before writing back to the real project.", risk="dangerous", payload={"task_id": task_id}),
     ]
 
     artifacts = {
         "project_tree.txt": tree,
         "validation_commands.txt": "\n".join(commands) or "No obvious command detected.",
         "agent_notes.md": summary,
+        "tool_logs.txt": "\n".join(agent.logs) or "No model tool calls captured.",
+        "validation.log": validation_log or "Validation was not run.",
     }
 
-    return AgentRunResult(task_id=task_id, task_type="code", summary=summary, events=events, artifacts=artifacts, approvals=approvals, diff=diff)
+    result = AgentRunResult(task_id=task_id, task_type="code", summary=summary, events=events, artifacts=artifacts, approvals=approvals, diff=diff)
+    save_run(result, source_path=str(source), workspace_repo=str(repo))
+    return result
 
 
 def _copy_project(source: Path, destination: Path) -> None:
@@ -66,11 +80,11 @@ def _copy_project(source: Path, destination: Path) -> None:
     shutil.copytree(source, destination, ignore=ignore)
 
 
-def _project_tree(root: Path, max_entries: int = 180) -> str:
+def _project_tree(root: Path, max_entries: int = 240) -> str:
     lines: list[str] = []
     count = 0
     for current, dirs, files in os.walk(root):
-        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS][:20]
+        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS][:24]
         rel = Path(current).relative_to(root)
         depth = 0 if str(rel) == "." else len(rel.parts)
         if depth > 4:
@@ -80,7 +94,7 @@ def _project_tree(root: Path, max_entries: int = 180) -> str:
         name = "repo" if str(rel) == "." else rel.name
         lines.append(f"{indent}{name}/")
         count += 1
-        for file_name in sorted(files)[:24]:
+        for file_name in sorted(files)[:28]:
             if count >= max_entries:
                 lines.append("  ...")
                 return "\n".join(lines)
@@ -89,28 +103,38 @@ def _project_tree(root: Path, max_entries: int = 180) -> str:
     return "\n".join(lines)
 
 
-def _run_optional_deepseek_loop(task: str, repo: Path, tree: str, commands: list[str]) -> str | None:
-    """Use DeepSeek/OpenAI-compatible chat if configured.
+def _run_validation_and_repair(task: str, repo: Path, commands: list[str], agent: DeepSeekToolAgent, events: list[RunEvent]) -> str:
+    if not commands:
+        events.append(RunEvent(id="validate-none", title="Validation skipped", detail="No obvious validation command detected.", state="pending", meta="none"))
+        return ""
 
-    This is intentionally read-only in the current version. Editing and command execution remain approval-gated.
-    """
-    api_key = os.getenv("DEEPSEEK_API_KEY")
-    if not api_key:
-        return None
+    should_auto_run = os.getenv("AUTO_RUN_TESTS", "true").lower() == "true"
+    if not should_auto_run:
+        events.append(RunEvent(id="validate-approval", title="Validation needs approval", detail=", ".join(commands), state="blocked", meta="approval"))
+        return "Validation commands were detected but AUTO_RUN_TESTS=false."
 
-    try:
-        from openai import OpenAI
+    logs: list[str] = []
+    for command in commands[:2]:
+        result = run_command(repo, command.split(), timeout_seconds=90)
+        logs.append(f"$ {command}\n{return_result_text(result)}")
+        if result.get("blocked"):
+            events.append(RunEvent(id="validate-blocked", title="Validation blocked", detail=command, state="blocked", meta="risk"))
+            continue
+        state = "done" if result.get("returncode") == 0 else "blocked"
+        events.append(RunEvent(id=f"validate-{command}", title="Validation run", detail=command, state=state, meta=str(result.get("returncode"))))
+        if result.get("returncode") != 0 and agent.enabled:
+            repair_prompt = task + "\n\nValidation failed. Fix the issue using tools, then summarize.\n\n" + return_result_text(result)
+            repair = agent.run(repair_prompt, _project_tree(repo), max_turns=5)
+            logs.append("\nRepair attempt:\n" + (repair or "No repair output."))
+            events.append(RunEvent(id="repair", title="Repair loop", detail="DeepSeek attempted one repair cycle after validation failure.", state="done", meta="repair"))
+            retry = run_command(repo, command.split(), timeout_seconds=90)
+            logs.append(f"\nRetry: $ {command}\n{return_result_text(retry)}")
+            events.append(RunEvent(id="validate-retry", title="Validation retry", detail=command, state="done" if retry.get("returncode") == 0 else "blocked", meta=str(retry.get("returncode"))))
+        break
+    return "\n\n".join(logs)
 
-        client = OpenAI(api_key=api_key, base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"))
-        model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a cautious local code agent. Inspect only; do not claim to modify files. Reply in Chinese."},
-                {"role": "user", "content": f"Task:\n{task}\n\nProject tree:\n{tree}\n\nSuggested commands:\n{commands}\n\nGive a concise implementation plan and safety notes."},
-            ],
-            temperature=0.2,
-        )
-        return response.choices[0].message.content or None
-    except Exception as exc:
-        return f"DeepSeek call failed, local inspection still completed. Error: {exc}"
+
+def return_result_text(result: dict[str, object]) -> str:
+    if result.get("blocked"):
+        return f"BLOCKED: {result.get('reason')}"
+    return f"exit={result.get('returncode')}\nSTDOUT:\n{result.get('stdout', '')}\nSTDERR:\n{result.get('stderr', '')}"
