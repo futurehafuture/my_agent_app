@@ -2,8 +2,9 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
-from chat_agent import run_chat_agent
-from responses_agent import run_responses_agent
+from loop import run_agent_loop
+from providers import ChatCompletionsProvider, ResponsesProvider
+from providers.base import Provider
 
 
 @dataclass
@@ -27,25 +28,29 @@ def run_agent(
     history = history or []
 
     try:
-        run = run_responses_agent(
-            user_input,
+        provider: Provider = ResponsesProvider()
+        run = run_agent_loop(
+            provider=provider,
+            user_input=user_input,
             model=model,
             history=history,
             max_tool_iterations=max_tool_iterations,
         )
-        backend = "responses"
+        backend = provider.api_name
         fallback_error = None
     except Exception as responses_error:
         print("[agent] Responses API failed. Falling back to Chat Completions API.")
         print(f"[agent] Responses error: {responses_error}")
 
-        run = run_chat_agent(
-            user_input,
+        provider = ChatCompletionsProvider()
+        run = run_agent_loop(
+            provider=provider,
+            user_input=user_input,
             model=model,
             history=history,
             max_tool_iterations=max_tool_iterations,
         )
-        backend = "chat"
+        backend = provider.api_name
         fallback_error = str(responses_error)
 
     new_history = append_turn(history, user_input, run.answer)
