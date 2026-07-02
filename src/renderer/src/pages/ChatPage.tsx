@@ -21,29 +21,10 @@ export type Message = {
   }
 }
 
-  const preprocessMath = (input: string) => {
+const preprocessMath = (input: string) => {
   let out = input
   out = out.replace(/\\\((.+?)\\\)/g, (_m, expr) => `$${expr}$`)
   out = out.replace(/\\\[((?:.|\n)*?)\\\]/g, (_m, expr) => `$$${expr}$$`)
-  out = out.replace(/\(([^()]*)\)/g, (m, expr) => {
-    const trimmed = String(expr).trim()
-    if (!trimmed) return m
-    const looksMath =
-      /\\(frac|sqrt|sum|int|gamma|alpha|beta|cdot|times|quad|text|left|right|zeta|pi|displaystyle)/.test(
-        trimmed
-      ) || /[=^_]/.test(trimmed)
-    if (!looksMath) return m
-    const asBlock = /\\(displaystyle|frac|sum|int)/.test(trimmed)
-    return asBlock ? `$$${trimmed}$$` : `$${trimmed}$`
-  })
-  out = out.replace(/\[(.*?)\]/g, (m, expr) => {
-    const trimmed = String(expr).trim()
-    if (!trimmed) return m
-    const looksMath =
-      /\\(frac|sqrt|sum|int|gamma|alpha|beta|cdot|times|quad|text|left|right)/.test(trimmed) ||
-      /[=^_]/.test(trimmed)
-    return looksMath ? `$$${trimmed}$$` : m
-  })
   return out
 }
 
@@ -247,7 +228,7 @@ export function ChatPage({
 
       <div
         ref={messagesWrapRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-3 space-y-6 scroll-smooth min-h-0 pb-28"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-3 space-y-6 scroll-smooth min-h-0 pb-6"
         onScroll={() => {
           const el = messagesWrapRef.current
           if (!el) return
