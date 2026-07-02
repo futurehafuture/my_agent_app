@@ -7,6 +7,13 @@ from openai import OpenAI
 from tools import TOOLS, run_local_tool
 
 
+SYSTEM_PROMPT = (
+    "You are a minimal tool-using agent. "
+    "Use tools when useful. "
+    "After receiving tool results, answer the user directly."
+)
+
+
 def create_client() -> OpenAI:
     return OpenAI(
         api_key=os.getenv("OPENAI_API_KEY"),
@@ -18,28 +25,21 @@ def run_responses_agent(
     user_input: str,
     *,
     model: str,
-    max_turns: int = 8,
+    history: list[dict[str, str]] | None = None,
+    max_tool_iterations: int = 16,
 ) -> str:
     client = create_client()
 
     input_items: list[dict[str, Any]] = [
-        {
-            "role": "system",
-            "content": (
-                "You are a minimal tool-using agent. "
-                "Use tools when useful. "
-                "After receiving tool results, answer the user directly."
-            ),
-        },
-        {
-            "role": "user",
-            "content": user_input,
-        },
+        {"role": "system", "content": SYSTEM_PROMPT},
+        *(history or []),
+        {"role": "user", "content": user_input},
     ]
 
     tool_schemas = [tool["responses_schema"] for tool in TOOLS.values()]
+    tool_iterations = 0
 
-    for _ in range(max_turns):
+    while True:
         response = client.responses.create(
             model=model,
             input=input_items,
@@ -53,8 +53,15 @@ def run_responses_agent(
             if item.type == "function_call"
         ]
 
+        # The model is done when it does not ask for more tools.
         if not function_calls:
             return response.output_text
+
+        tool_iterations += 1
+        if tool_iterations > max_tool_iterations:
+            raise RuntimeError(
+                f"Agent exceeded max_tool_iterations={max_tool_iterations}"
+            )
 
         input_items.extend(
             item.model_dump(exclude_none=True)
@@ -82,5 +89,3 @@ def run_responses_agent(
                     "output": json.dumps(tool_result, ensure_ascii=False),
                 }
             )
-
-    raise RuntimeError(f"Agent stopped after max_turns={max_turns}")
