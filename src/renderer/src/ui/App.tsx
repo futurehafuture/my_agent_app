@@ -52,7 +52,7 @@ const defaultApprovals: ApprovalItem[] = [
     risk: 'needs-approval'
   },
   {
-    id: 'apply',
+    id: 'apply-diff',
     title: 'Apply sandbox diff',
     reason: 'Real project files are changed only after review.',
     risk: 'dangerous'
@@ -60,10 +60,6 @@ const defaultApprovals: ApprovalItem[] = [
 ]
 
 const backendUrl = 'http://127.0.0.1:8765'
-
-function normalizeEvents(events?: TaskEvent[]): TaskEvent[] {
-  return events && events.length > 0 ? events : taskEvents
-}
 
 function normalizeApprovals(items?: ApprovalItem[]): ApprovalItem[] {
   return items && items.length > 0 ? items : defaultApprovals
@@ -77,6 +73,7 @@ export function App(): JSX.Element {
   const [events, setEvents] = useState<TaskEvent[]>(taskEvents)
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [applyStatus, setApplyStatus] = useState<string>('')
 
   const SelectedIcon = useMemo(() => iconMap[selected.agent] ?? Bot, [selected])
   const approvals = normalizeApprovals(runResult?.approvals)
@@ -87,49 +84,55 @@ export function App(): JSX.Element {
     if (result) setProjectPath(result)
   }
 
-  async function runTask(): Promise<void> {
+  function runTask(): void {
     setIsRunning(true)
     setError(null)
+    setApplyStatus('')
     setRunResult(null)
-    setEvents([
-      { id: 'route', title: 'Routing task', detail: 'Sending request to backend router.', state: 'running', meta: 'live' },
-      { id: 'agent', title: 'Specialist agent', detail: 'Waiting for backend result.', state: 'pending', meta: selected.agent },
-      { id: 'review', title: 'Review output', detail: 'Diffs, artifacts, and approvals will appear here.', state: 'pending', meta: 'pending' }
-    ])
+    setEvents([{ id: 'start', title: 'Connecting stream', detail: 'Opening SSE connection to backend.', state: 'running', meta: 'sse' }])
 
-    try {
-      const authorizedPath = projectPath.startsWith('Choose') ? null : projectPath
-      const response = await fetch(`${backendUrl}/tasks/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: prompt,
-          selected_agent: selected.agent,
-          project_path: selected.agent === 'code' ? authorizedPath : null,
-          data_path: selected.agent === 'data' ? authorizedPath : null,
-          allowed_folder: selected.agent === 'file' ? authorizedPath : null
-        })
-      })
+    const authorizedPath = projectPath.startsWith('Choose') ? '' : projectPath
+    const params = new URLSearchParams({ message: prompt, selected_agent: selected.agent })
+    if (selected.agent === 'code' && authorizedPath) params.set('project_path', authorizedPath)
+    if (selected.agent === 'data' && authorizedPath) params.set('data_path', authorizedPath)
+    if (selected.agent === 'file' && authorizedPath) params.set('allowed_folder', authorizedPath)
 
-      if (!response.ok) {
-        const text = await response.text()
-        throw new Error(text || `Backend returned ${response.status}`)
-      }
+    const stream = new EventSource(`${backendUrl}/tasks/stream?${params.toString()}`)
 
-      const data = (await response.json()) as AgentRunResult
+    stream.addEventListener('event', (raw) => {
+      const event = JSON.parse((raw as MessageEvent).data) as TaskEvent
+      setEvents((current) => [...current, event])
+    })
+
+    stream.addEventListener('result', (raw) => {
+      const data = JSON.parse((raw as MessageEvent).data) as AgentRunResult
       setRunResult(data)
-      setEvents(normalizeEvents(data.events))
       if (data.error) setError(data.error)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      setError(message)
-      setEvents([
-        { id: 'error', title: 'Backend unavailable', detail: message, state: 'blocked', meta: 'error' },
-        { id: 'hint', title: 'Start backend', detail: 'Run: cd backend_py && uvicorn app.main:app --reload --port 8765', state: 'pending', meta: 'fix' }
-      ])
-    } finally {
+    })
+
+    stream.addEventListener('done', () => {
+      stream.close()
       setIsRunning(false)
+    })
+
+    stream.onerror = () => {
+      stream.close()
+      setIsRunning(false)
+      setError('Backend stream failed. Start: cd backend_py && uvicorn app.main:app --reload --port 8765')
+      setEvents((current) => [...current, { id: 'error', title: 'Stream failed', detail: 'Could not read backend SSE stream.', state: 'blocked', meta: 'error' }])
     }
+  }
+
+  async function applyDiff(): Promise<void> {
+    if (!runResult?.task_id) return
+    setApplyStatus('Applying sandbox diff...')
+    const response = await fetch(`${backendUrl}/tasks/apply-diff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_id: runResult.task_id, confirm: true })
+    })
+    const data = await response.json()
+    setApplyStatus(JSON.stringify(data, null, 2))
   }
 
   return (
@@ -155,7 +158,7 @@ export function App(): JSX.Element {
         </nav>
         <div className="railStatus">
           <span className="pulse" />
-          <small>{isRunning ? 'running' : 'local'}</small>
+          <small>{isRunning ? 'streaming' : 'local'}</small>
         </div>
       </aside>
 
@@ -164,11 +167,11 @@ export function App(): JSX.Element {
           <div>
             <div className="eyebrow"><RadioTower size={14} /> Universal Agent Platform</div>
             <h1>一个能调度工具、沙箱和专业 Agent 的桌面控制台</h1>
-            <p>主控 Agent 负责理解任务，专业 Agent 负责代码、数据、文件、调研和 PPT。所有高风险动作都进入审批流。</p>
+            <p>子 Agent 不是流水线步骤，而是各自拥有 instructions、tools、sandbox 和审批边界的专业 Agent。</p>
           </div>
           <div className="heroActions">
             <button className="ghostButton" onClick={chooseFolder}><FolderOpen size={16} /> 授权目录</button>
-            <button className="primaryButton" onClick={runTask} disabled={isRunning}><Play size={16} /> {isRunning ? '运行中' : '运行计划'}</button>
+            <button className="primaryButton" onClick={runTask} disabled={isRunning}><Play size={16} /> {isRunning ? '流式运行中' : '运行计划'}</button>
           </div>
         </header>
 
@@ -182,17 +185,9 @@ export function App(): JSX.Element {
             {capabilities.map((item) => {
               const Icon = iconMap[item.agent] ?? Bot
               return (
-                <button
-                  key={item.id}
-                  className={`capCard ${item.id === selected.id ? 'selected' : ''}`}
-                  data-accent={item.accent}
-                  onClick={() => setSelected(item)}
-                >
+                <button key={item.id} className={`capCard ${item.id === selected.id ? 'selected' : ''}`} data-accent={item.accent} onClick={() => setSelected(item)}>
                   <span className="capIcon"><Icon size={20} /></span>
-                  <span>
-                    <strong>{item.title}</strong>
-                    <small>{item.tagline}</small>
-                  </span>
+                  <span><strong>{item.title}</strong><small>{item.tagline}</small></span>
                   <ChevronRight size={17} />
                 </button>
               )
@@ -203,44 +198,33 @@ export function App(): JSX.Element {
         <section className="contentGrid">
           <article className="panel selectedAgent">
             <div className="panelHeader">
-              <div>
-                <span className="sectionLabel">Selected Agent</span>
-                <h2><SelectedIcon size={24} /> {selected.title}</h2>
-              </div>
+              <div><span className="sectionLabel">Selected Agent</span><h2><SelectedIcon size={24} /> {selected.title}</h2></div>
               <span className={`riskPill ${selected.risk}`}>{selected.risk}</span>
             </div>
             <p className="agentDescription">{selected.description}</p>
             <div className="agentMetaGrid">
               <div><BrainCircuit size={18} /><span>Router handoff</span><strong>{runResult?.task_type ?? 'ready'}</strong></div>
               <div><TerminalSquare size={18} /><span>Sandbox</span><strong>{selected.needsSandbox ? 'required' : 'optional'}</strong></div>
-              <div><Gauge size={18} /><span>Mode</span><strong>plan-first</strong></div>
+              <div><Gauge size={18} /><span>Mode</span><strong>SSE + tools</strong></div>
             </div>
-            <div className="toolStrip">
-              {selected.tools.map((tool) => <span key={tool}>{tool}</span>)}
-            </div>
+            <div className="toolStrip">{selected.tools.map((tool) => <span key={tool}>{tool}</span>)}</div>
           </article>
 
           <article className="panel pipelinePanel">
             <div className="panelHeader">
-              <div>
-                <span className="sectionLabel">Agent Run</span>
-                <h2><Activity size={23} /> Live pipeline</h2>
-              </div>
+              <div><span className="sectionLabel">Agent Run</span><h2><Activity size={23} /> Live stream</h2></div>
               <button className="miniButton">{runResult?.task_id ?? 'No run'}</button>
             </div>
             <div className="timeline">
-              {events.map((event) => (
-                <div className={`timelineItem ${event.state}`} key={event.id}>
+              {events.map((event, index) => (
+                <div className={`timelineItem ${event.state}`} key={`${event.id}-${index}`}>
                   <div className="timelineIcon">
                     {event.state === 'done' && <CheckCircle2 size={17} />}
                     {event.state === 'running' && <CircleDot size={17} />}
                     {event.state === 'blocked' && <LockKeyhole size={17} />}
                     {event.state === 'pending' && <XCircle size={17} />}
                   </div>
-                  <div>
-                    <strong>{event.title}</strong>
-                    <p>{event.detail}</p>
-                  </div>
+                  <div><strong>{event.title}</strong><p>{event.detail}</p></div>
                   <small>{event.meta}</small>
                 </div>
               ))}
@@ -248,69 +232,32 @@ export function App(): JSX.Element {
           </article>
 
           <article className="panel workspacePanel">
-            <div className="panelHeader">
-              <div>
-                <span className="sectionLabel">Workspace</span>
-                <h2><HardDrive size={23} /> Scoped access</h2>
-              </div>
-            </div>
-            <div className="pathCard">
-              <small>Authorized source</small>
-              <strong>{projectPath}</strong>
-            </div>
-            <div className="workspaceMap">
-              <div><span /> source project</div>
-              <ArrowUpRight size={16} />
-              <div><span /> sandbox copy</div>
-              <ArrowUpRight size={16} />
-              <div><span /> diff review</div>
-            </div>
+            <div className="panelHeader"><div><span className="sectionLabel">Workspace</span><h2><HardDrive size={23} /> Scoped access</h2></div></div>
+            <div className="pathCard"><small>Authorized source</small><strong>{projectPath}</strong></div>
+            <div className="workspaceMap"><div><span /> source project</div><ArrowUpRight size={16} /><div><span /> sandbox copy</div><ArrowUpRight size={16} /><div><span /> diff review</div></div>
           </article>
 
           <article className="panel approvalPanel">
-            <div className="panelHeader">
-              <div>
-                <span className="sectionLabel">Approvals</span>
-                <h2><ShieldCheck size={23} /> Human gates</h2>
-              </div>
-            </div>
+            <div className="panelHeader"><div><span className="sectionLabel">Approvals</span><h2><ShieldCheck size={23} /> Human gates</h2></div></div>
             {approvals.map((approval) => (
               <div className="approvalItem" key={approval.id}>
                 <LockKeyhole size={17} />
-                <div>
-                  <strong>{approval.title}</strong>
-                  <p>{approval.reason}</p>
-                </div>
+                <div><strong>{approval.title}</strong><p>{approval.reason}</p></div>
               </div>
             ))}
+            <button className="primaryButton" onClick={applyDiff} disabled={!runResult?.task_id || selected.agent !== 'code'}>确认应用 diff</button>
+            {applyStatus && <pre>{applyStatus}</pre>}
           </article>
 
           <article className="panel artifactsPanel">
-            <div className="panelHeader">
-              <div>
-                <span className="sectionLabel">Artifacts</span>
-                <h2><WandSparkles size={23} /> Verifiable output</h2>
-              </div>
-              <span className="artifactCount">{Object.keys(runResult?.artifacts ?? {}).length} files</span>
-            </div>
+            <div className="panelHeader"><div><span className="sectionLabel">Artifacts</span><h2><WandSparkles size={23} /> Verifiable output</h2></div><span className="artifactCount">{Object.keys(runResult?.artifacts ?? {}).length} files</span></div>
             <pre>{artifactText}</pre>
           </article>
 
           <article className="panel chatPanel">
-            <div className="panelHeader">
-              <div>
-                <span className="sectionLabel">Conversation</span>
-                <h2><MessageSquareText size={23} /> Agent response</h2>
-              </div>
-            </div>
-            <div className="messageBubble assistant">
-              <strong>{error ? 'Backend error' : 'Agent'}</strong>
-              <p>{error || runResult?.summary || '我会把任务拆成：代码沙箱、数据工作区、文件权限、MCP 工具和审批流。点击运行计划后会调用本地后端。'}</p>
-            </div>
-            <div className="messageBubble user">
-              <strong>You</strong>
-              <p>{prompt}</p>
-            </div>
+            <div className="panelHeader"><div><span className="sectionLabel">Conversation</span><h2><MessageSquareText size={23} /> Agent response</h2></div></div>
+            <div className="messageBubble assistant"><strong>{error ? 'Backend error' : 'Agent'}</strong><p>{error || runResult?.summary || '点击运行计划后，会通过 SSE 连接本地后端，Router 会把任务交给真正的专业 Agent。'}</p></div>
+            <div className="messageBubble user"><strong>You</strong><p>{prompt}</p></div>
           </article>
         </section>
       </section>
