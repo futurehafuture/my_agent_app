@@ -1,6 +1,10 @@
 node_modules
-dist
 out
+dist
 .DS_Store
-.eslintcache
-*.log*
+.env
+.env.local
+backend_py/.venv
+backend_py/__pycache__
+agent_workspaces
+artifacts

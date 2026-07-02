@@ -1,34 +1,39 @@
-# my-agent-app
+# My Agent App
 
-An Electron application with React and TypeScript
+A universal desktop Agent application scaffold.
 
-## Recommended IDE Setup
+This redesign turns the starter app into a polished **general-purpose Agent command center**:
 
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+- Router Agent: classifies user intent and chooses a specialist agent.
+- Code Agent: works inside a project sandbox and produces diffs before applying changes.
+- Data Agent: analyzes uploaded CSV/Excel files in an isolated data workspace.
+- File Agent: manages user-approved folders with explicit approval before risky actions.
+- Research Agent: search-oriented workflow placeholder.
+- PPT Agent: document and slide generation workflow placeholder.
+- MCP Hub: external tool/server management placeholder.
+- Permission and approval layer: high-risk actions are planned, logged, and require user confirmation.
 
-## Project Setup
+## UI direction
 
-### Install
+The interface is inspired by modern productivity and AI developer tools:
+
+- Raycast-style command palette for fast intent capture.
+- Linear-style dense dark project dashboards.
+- Agent-first IDE layout: workspace, agent timeline, tools, approvals, artifacts.
+
+## Development
 
 ```bash
-$ npm install
+npm install
+npm run dev
 ```
 
-### Development
+Python service scaffold:
 
 ```bash
-$ npm run dev
-```
-
-### Build
-
-```bash
-# For windows
-$ npm run build:win
-
-# For macOS
-$ npm run build:mac
-
-# For Linux
-$ npm run build:linux
+cd backend_py
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8765
 ```
