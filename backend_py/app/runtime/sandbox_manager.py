@@ -11,7 +11,7 @@ class SandboxPlan:
 
 def local_unix_sandbox_plan(workspace_root: Path) -> SandboxPlan:
     return SandboxPlan(
-        provider="UnixLocalSandboxClient",
+        provider="LocalWorkspace",
         workspace_root=workspace_root,
         notes="Use only for local development. Switch to Docker or a hosted sandbox for stronger isolation.",
     )

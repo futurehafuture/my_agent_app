@@ -31,7 +31,7 @@ import {
   XCircle
 } from 'lucide-react'
 import { capabilities, taskEvents } from '../data/capabilities'
-import type { AgentCapability, ApprovalItem } from '../types'
+import type { AgentCapability, AgentRunResult, ApprovalItem, TaskEvent } from '../types'
 
 const iconMap = {
   code: FileCode2,
@@ -44,11 +44,11 @@ const iconMap = {
   mcp: ServerCog
 }
 
-const approvals: ApprovalItem[] = [
+const defaultApprovals: ApprovalItem[] = [
   {
     id: 'terminal',
     title: 'Run terminal command',
-    reason: 'npm build can install, compile, or generate files. Show the command before execution.',
+    reason: 'Terminal commands can modify dependencies or generate files. Commands are shown before execution.',
     risk: 'needs-approval'
   },
   {
@@ -59,26 +59,77 @@ const approvals: ApprovalItem[] = [
   }
 ]
 
-const sampleDiff = `src/renderer/src/ui/App.tsx
-+ Agent command center layout
-+ Capability cards
-+ Approval panel
-+ Workspace status
+const backendUrl = 'http://127.0.0.1:8765'
 
-backend_py/app/agents/code_agent.py
-+ SandboxAgent integration placeholder
-+ DeepSeek provider hook planned`
+function normalizeEvents(events?: TaskEvent[]): TaskEvent[] {
+  return events && events.length > 0 ? events : taskEvents
+}
+
+function normalizeApprovals(items?: ApprovalItem[]): ApprovalItem[] {
+  return items && items.length > 0 ? items : defaultApprovals
+}
 
 export function App(): JSX.Element {
   const [selected, setSelected] = useState<AgentCapability>(capabilities[0])
   const [projectPath, setProjectPath] = useState<string>('Choose a project or data folder')
   const [prompt, setPrompt] = useState('改造这个项目：做一个通用 Agent App，能写代码、分析数据、管理授权文件，并且所有危险操作需要确认。')
+  const [runResult, setRunResult] = useState<AgentRunResult | null>(null)
+  const [events, setEvents] = useState<TaskEvent[]>(taskEvents)
+  const [isRunning, setIsRunning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const SelectedIcon = useMemo(() => iconMap[selected.agent] ?? Bot, [selected])
+  const approvals = normalizeApprovals(runResult?.approvals)
+  const artifactText = runResult?.diff || Object.entries(runResult?.artifacts ?? {}).map(([key, value]) => `${key}\n${value}`).join('\n\n') || 'Artifacts and diffs will appear here after a run.'
 
   async function chooseFolder(): Promise<void> {
     const result = await window.agentApp?.selectDirectory()
     if (result) setProjectPath(result)
+  }
+
+  async function runTask(): Promise<void> {
+    setIsRunning(true)
+    setError(null)
+    setRunResult(null)
+    setEvents([
+      { id: 'route', title: 'Routing task', detail: 'Sending request to backend router.', state: 'running', meta: 'live' },
+      { id: 'agent', title: 'Specialist agent', detail: 'Waiting for backend result.', state: 'pending', meta: selected.agent },
+      { id: 'review', title: 'Review output', detail: 'Diffs, artifacts, and approvals will appear here.', state: 'pending', meta: 'pending' }
+    ])
+
+    try {
+      const authorizedPath = projectPath.startsWith('Choose') ? null : projectPath
+      const response = await fetch(`${backendUrl}/tasks/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: prompt,
+          selected_agent: selected.agent,
+          project_path: selected.agent === 'code' ? authorizedPath : null,
+          data_path: selected.agent === 'data' ? authorizedPath : null,
+          allowed_folder: selected.agent === 'file' ? authorizedPath : null
+        })
+      })
+
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || `Backend returned ${response.status}`)
+      }
+
+      const data = (await response.json()) as AgentRunResult
+      setRunResult(data)
+      setEvents(normalizeEvents(data.events))
+      if (data.error) setError(data.error)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError(message)
+      setEvents([
+        { id: 'error', title: 'Backend unavailable', detail: message, state: 'blocked', meta: 'error' },
+        { id: 'hint', title: 'Start backend', detail: 'Run: cd backend_py && uvicorn app.main:app --reload --port 8765', state: 'pending', meta: 'fix' }
+      ])
+    } finally {
+      setIsRunning(false)
+    }
   }
 
   return (
@@ -104,7 +155,7 @@ export function App(): JSX.Element {
         </nav>
         <div className="railStatus">
           <span className="pulse" />
-          <small>local</small>
+          <small>{isRunning ? 'running' : 'local'}</small>
         </div>
       </aside>
 
@@ -117,7 +168,7 @@ export function App(): JSX.Element {
           </div>
           <div className="heroActions">
             <button className="ghostButton" onClick={chooseFolder}><FolderOpen size={16} /> 授权目录</button>
-            <button className="primaryButton"><Play size={16} /> 运行计划</button>
+            <button className="primaryButton" onClick={runTask} disabled={isRunning}><Play size={16} /> {isRunning ? '运行中' : '运行计划'}</button>
           </div>
         </header>
 
@@ -160,7 +211,7 @@ export function App(): JSX.Element {
             </div>
             <p className="agentDescription">{selected.description}</p>
             <div className="agentMetaGrid">
-              <div><BrainCircuit size={18} /><span>Router handoff</span><strong>enabled</strong></div>
+              <div><BrainCircuit size={18} /><span>Router handoff</span><strong>{runResult?.task_type ?? 'ready'}</strong></div>
               <div><TerminalSquare size={18} /><span>Sandbox</span><strong>{selected.needsSandbox ? 'required' : 'optional'}</strong></div>
               <div><Gauge size={18} /><span>Mode</span><strong>plan-first</strong></div>
             </div>
@@ -175,10 +226,10 @@ export function App(): JSX.Element {
                 <span className="sectionLabel">Agent Run</span>
                 <h2><Activity size={23} /> Live pipeline</h2>
               </div>
-              <button className="miniButton">View logs</button>
+              <button className="miniButton">{runResult?.task_id ?? 'No run'}</button>
             </div>
             <div className="timeline">
-              {taskEvents.map((event) => (
+              {events.map((event) => (
                 <div className={`timelineItem ${event.state}`} key={event.id}>
                   <div className="timelineIcon">
                     {event.state === 'done' && <CheckCircle2 size={17} />}
@@ -240,9 +291,9 @@ export function App(): JSX.Element {
                 <span className="sectionLabel">Artifacts</span>
                 <h2><WandSparkles size={23} /> Verifiable output</h2>
               </div>
-              <span className="artifactCount">2 files</span>
+              <span className="artifactCount">{Object.keys(runResult?.artifacts ?? {}).length} files</span>
             </div>
-            <pre>{sampleDiff}</pre>
+            <pre>{artifactText}</pre>
           </article>
 
           <article className="panel chatPanel">
@@ -253,8 +304,8 @@ export function App(): JSX.Element {
               </div>
             </div>
             <div className="messageBubble assistant">
-              <strong>Router Agent</strong>
-              <p>我会把任务拆成：代码沙箱、数据工作区、文件权限、MCP 工具和审批流。下一步会生成执行计划。</p>
+              <strong>{error ? 'Backend error' : 'Agent'}</strong>
+              <p>{error || runResult?.summary || '我会把任务拆成：代码沙箱、数据工作区、文件权限、MCP 工具和审批流。点击运行计划后会调用本地后端。'}</p>
             </div>
             <div className="messageBubble user">
               <strong>You</strong>

@@ -30,6 +30,18 @@ export interface ApprovalItem {
   risk: RiskLevel
 }
 
+export interface AgentRunResult {
+  task_id: string
+  summary: string
+  task_type: string
+  workspace?: Record<string, unknown>
+  events: TaskEvent[]
+  artifacts: Record<string, string>
+  approvals: ApprovalItem[]
+  diff?: string
+  error?: string | null
+}
+
 declare global {
   interface Window {
     agentApp?: {

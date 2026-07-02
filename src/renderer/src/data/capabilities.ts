@@ -76,8 +76,8 @@ export const capabilities: AgentCapability[] = [
 ]
 
 export const taskEvents: TaskEvent[] = [
-  { id: '1', title: 'Intent routed', detail: 'Router Agent classified this as a code task.', state: 'done', meta: '38 ms' },
-  { id: '2', title: 'Workspace prepared', detail: 'Project copy mounted as /repo. Real source remains untouched.', state: 'done', meta: 'safe copy' },
-  { id: '3', title: 'Agent planning', detail: 'Code Agent is reading package metadata and deciding which files matter.', state: 'running', meta: 'live' },
-  { id: '4', title: 'Await approval', detail: 'Running build commands and applying final patch require confirmation.', state: 'blocked', meta: 'human gate' }
+  { id: '1', title: 'Ready', detail: 'Choose a capability, authorize a folder, then run a task.', state: 'pending', meta: 'idle' },
+  { id: '2', title: 'Plan', detail: 'The backend will classify the task and choose a specialist agent.', state: 'pending', meta: 'router' },
+  { id: '3', title: 'Workspace', detail: 'Code and data tasks run inside a copied workspace.', state: 'pending', meta: 'sandbox' },
+  { id: '4', title: 'Review', detail: 'Risky actions require approval before touching real files.', state: 'pending', meta: 'human gate' }
 ]

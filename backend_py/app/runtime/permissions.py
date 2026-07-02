@@ -14,6 +14,6 @@ def ensure_within_root(root: Path, candidate: Path) -> Path:
 
 
 def is_risky_command(command: str) -> bool:
-    risky_tokens = ["rm ", "sudo", "chmod", "chown", "curl |", "wget |", "dd ", "mkfs"]
+    risky_tokens = ["rm ", "sudo", "chmod", "chown", "curl |", "wget |", "dd ", "mkfs", ":(){", "shutdown", "reboot"]
     normalized = command.lower()
     return any(token in normalized for token in risky_tokens)
