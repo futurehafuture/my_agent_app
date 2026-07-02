@@ -38,9 +38,9 @@ OPENAI_MODEL=gpt-4o-mini
 python src/main.py "What time is it? Then calculate 12 * 7."
 ```
 
-## Multi-turn conversation history
+## Multi-turn conversation and full trace
 
-The agent can keep multi-turn history in a JSON file.
+The agent can keep multi-turn history and full execution traces in a JSON file.
 
 First turn:
 
@@ -54,16 +54,33 @@ Second turn:
 python src/main.py --session-file .agent_session.json "What is my name?"
 ```
 
-The session file stores only clean user/assistant turns:
+The session file stores complete turns:
 
 ```json
-[
-  {"role": "user", "content": "My name is Bruis."},
-  {"role": "assistant", "content": "Got it, your name is Bruis."}
-]
+{
+  "version": 1,
+  "turns": [
+    {
+      "type": "turn",
+      "backend": "responses",
+      "model": "gpt-4o-mini",
+      "user": {"role": "user", "content": "What time is it?"},
+      "assistant": {"role": "assistant", "content": "The current UTC time is ..."},
+      "trace": [
+        {"type": "model_request", "api": "responses", "iteration": 1},
+        {"type": "model_response", "api": "responses", "iteration": 1},
+        {"type": "tool_result", "api": "responses", "iteration": 1, "tool_name": "get_time"},
+        {"type": "model_request", "api": "responses", "iteration": 2},
+        {"type": "model_response", "api": "responses", "iteration": 2}
+      ]
+    }
+  ]
+}
 ```
 
-Tool call traces are not persisted by default. They are only kept inside the current turn while the agent is deciding what to do. This keeps long-term history smaller and closer to normal chat history.
+For the next model call, the code extracts clean user/assistant messages from the saved turns as conversation context. The full trace remains saved for replay, debugging, and auditing.
+
+Old session files that were simple lists of user/assistant messages are still accepted and are migrated into the new `turns` format the next time they are saved.
 
 ## DeepSeek example
 
