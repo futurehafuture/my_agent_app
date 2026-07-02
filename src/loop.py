@@ -1,4 +1,3 @@
-import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -72,7 +71,7 @@ def run_agent_loop(
             raise RuntimeError(f"Agent exceeded max_tool_iterations={max_tool_iterations}")
 
         for tool_call in model_output.tool_calls:
-            tool_result = run_local_tool(tool_call.name, tool_call.arguments)
+            tool_result = execute_tool_call(tool_call.name, tool_call.arguments)
             tool_message = provider.append_tool_result(state, tool_call, tool_result)
 
             trace.append(
@@ -89,5 +88,9 @@ def run_agent_loop(
             )
 
 
-def dump_tool_result(tool_result: dict[str, Any]) -> str:
-    return json.dumps(tool_result, ensure_ascii=False)
+def execute_tool_call(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    parse_error = arguments.get("_parse_error")
+    if isinstance(parse_error, str):
+        return {"ok": False, "error": parse_error}
+
+    return run_local_tool(name, arguments)
