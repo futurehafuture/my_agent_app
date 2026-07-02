@@ -10,10 +10,11 @@ _runs: dict[str, dict[str, Any]] = {}
 
 def save_run(result: AgentRunResult, *, source_path: str | None = None, workspace_repo: str | None = None) -> None:
     with _lock:
+        previous = _runs.get(result.task_id, {})
         _runs[result.task_id] = {
             "result": result,
-            "source_path": source_path,
-            "workspace_repo": workspace_repo,
+            "source_path": source_path if source_path is not None else previous.get("source_path"),
+            "workspace_repo": workspace_repo if workspace_repo is not None else previous.get("workspace_repo"),
         }
 
 
