@@ -4,70 +4,109 @@
 
 /* Theme variables */
 :root {
-  --bg-app: #343541;
-  --bg-sidebar: #202123;
-  --bg-panel: #2a2b32;
-  --bg-card-ai: #444654;
-  --bg-card-user: #3a3b44;
-  --bg-input: #40414f;
-  --bg-input-soft: #1f2026;
-  --border: #374151;
-  --text: #ffffff;
-  --text-muted: #9ca3af;
-  --text-soft: #d1d5db;
-  --text-dim: #6b7280;
+  --bg-app: #0f1117;
+  --bg-sidebar: #12151d;
+  --bg-chat: #11141b;
+  --bg-panel: #171b24;
+  --bg-card-ai: rgba(255, 255, 255, 0.045);
+  --bg-card-user: rgba(99, 102, 241, 0.1);
+  --bg-input: rgba(255, 255, 255, 0.07);
+  --bg-input-soft: rgba(255, 255, 255, 0.045);
+  --border: rgba(148, 163, 184, 0.16);
+  --border-strong: rgba(148, 163, 184, 0.24);
+  --text: #eef2ff;
+  --text-muted: #94a3b8;
+  --text-soft: #cbd5e1;
+  --text-dim: #64748b;
   --link: #93c5fd;
-  --avatar-user: #4f46e5;
-  --avatar-bot: #34d399;
+  --accent: #8b5cf6;
+  --accent-2: #22c55e;
+  --avatar-user: linear-gradient(135deg, #8b5cf6, #6366f1);
+  --avatar-bot: linear-gradient(135deg, #22c55e, #14b8a6);
+  --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.28);
 }
 
 .theme-light {
   color-scheme: light;
-  --bg-app: #f3f5fb;
-  --bg-sidebar: #ffffff;
-  --bg-chat: #ffffff;
+  --bg-app: #f6f7fb;
+  --bg-sidebar: rgba(255, 255, 255, 0.86);
+  --bg-chat: #f8fafc;
   --bg-panel: #ffffff;
-  --bg-card-ai: #f6f7fb;
+  --bg-card-ai: rgba(255, 255, 255, 0.92);
   --bg-card-user: #eef2ff;
   --bg-input: #ffffff;
-  --bg-input-soft: #f7f8fc;
-  --border: #e1e5f0;
+  --bg-input-soft: #f1f5f9;
+  --border: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.16);
   --text: #0f172a;
   --text-muted: #64748b;
   --text-soft: #334155;
   --text-dim: #94a3b8;
-  --link: #1d4ed8;
-  --avatar-user: #f59e0b;
-  --avatar-bot: #4ade80;
+  --link: #2563eb;
+  --accent: #7c3aed;
+  --accent-2: #16a34a;
+  --avatar-user: linear-gradient(135deg, #8b5cf6, #4f46e5);
+  --avatar-bot: linear-gradient(135deg, #22c55e, #0d9488);
+  --shadow-soft: 0 18px 50px rgba(15, 23, 42, 0.08);
 }
 
 .theme-dark {
   color-scheme: dark;
-  --bg-chat: var(--bg-app);
 }
 
-/* 强制让根容器填满窗口 */
 html, body, #root {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* 防止出现双重滚动条 */
-  background: var(--bg-app);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(139, 92, 246, 0.16), transparent 34%),
+    radial-gradient(circle at 85% 12%, rgba(34, 197, 94, 0.11), transparent 32%),
+    var(--bg-app);
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* 允许拖拽窗口 */
+button, input, textarea {
+  font: inherit;
+}
+
+button {
+  -webkit-app-region: no-drag;
+}
+
+::selection {
+  background: rgba(139, 92, 246, 0.35);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.34);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
 .draggable {
   -webkit-app-region: drag;
 }
 
-/* 禁止拖拽 (用于拖拽区域内的按钮，否则按钮无法点击) */
 .non-draggable {
   -webkit-app-region: no-drag;
 }
 
-/* KaTeX 排版更接近课本 */
 .katex {
   font-size: 1.1em;
   line-height: 1.4;
@@ -92,33 +131,37 @@ html, body, #root {
   font-family: 'Latin Modern Math', 'STIX Two Math', 'Cambria Math', 'Times New Roman', serif;
 }
 
-/* GitHub-like markdown table styling */
 .markdown-table {
   width: 100%;
-  border-collapse: collapse;
-  margin: 0.75rem 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0.85rem 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
   font-size: 0.875rem;
 }
 
 .markdown-table th,
 .markdown-table td {
-  border: 1px solid var(--border);
-  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 11px;
   vertical-align: top;
 }
 
 .markdown-table th {
-  background: var(--bg-panel);
+  background: var(--bg-input-soft);
+  color: var(--text-soft);
   font-weight: 600;
   text-align: left;
 }
 
-.markdown-table tr:nth-child(even) td {
-  background: var(--bg-input-soft);
+.markdown-table tr:last-child td {
+  border-bottom: 0;
 }
 
 .markdown-table tr:hover td {
-  background: var(--bg-panel);
+  background: var(--bg-input-soft);
 }
 
 @keyframes caret-blink {
@@ -126,13 +169,36 @@ html, body, #root {
   50%, 100% { opacity: 0; }
 }
 
+@keyframes gentle-pulse {
+  0%, 100% { transform: translateY(0); opacity: 0.72; }
+  50% { transform: translateY(-1px); opacity: 1; }
+}
+
 .typing-caret {
   display: inline-block;
   width: 6px;
   height: 14px;
   margin-left: 4px;
-  background: var(--text);
+  background: var(--accent);
   vertical-align: -2px;
   animation: caret-blink 1s step-end infinite;
-  border-radius: 1px;
+  border-radius: 999px;
+}
+
+.app-surface {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(139, 92, 246, 0.11), transparent 34%),
+    radial-gradient(circle at 85% 10%, rgba(34, 197, 94, 0.08), transparent 30%),
+    var(--bg-chat);
+}
+
+.glass-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.soft-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.22);
 }
