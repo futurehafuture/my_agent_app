@@ -49,16 +49,7 @@ def run_responses_agent(
 
     while True:
         iteration = tool_iterations + 1
-        trace.append(
-            {
-                "type": "model_request",
-                "api": "responses",
-                "iteration": iteration,
-                "model": model,
-                "input": input_items,
-                "tools": tool_schemas,
-            }
-        )
+        trace.append({"type": "model_request", "api": "responses", "iteration": iteration, "input": list(input_items)})
 
         response = client.responses.create(
             model=model,
@@ -67,10 +58,7 @@ def run_responses_agent(
             temperature=0,
         )
 
-        response_output = [
-            item.model_dump(exclude_none=True)
-            for item in response.output
-        ]
+        response_output = [item.model_dump(exclude_none=True) for item in response.output]
         trace.append(
             {
                 "type": "model_response",
@@ -81,21 +69,14 @@ def run_responses_agent(
             }
         )
 
-        function_calls = [
-            item
-            for item in response.output
-            if item.type == "function_call"
-        ]
+        function_calls = [item for item in response.output if item.type == "function_call"]
 
-        # The model is done when it does not ask for more tools.
         if not function_calls:
             return AgentRun(answer=response.output_text, trace=trace)
 
         tool_iterations += 1
         if tool_iterations > max_tool_iterations:
-            raise RuntimeError(
-                f"Agent exceeded max_tool_iterations={max_tool_iterations}"
-            )
+            raise RuntimeError(f"Agent exceeded max_tool_iterations={max_tool_iterations}")
 
         input_items.extend(response_output)
 
@@ -106,10 +87,8 @@ def run_responses_agent(
             try:
                 arguments = json.loads(raw_arguments)
             except json.JSONDecodeError as error:
-                tool_result = {
-                    "ok": False,
-                    "error": f"Invalid tool arguments JSON: {error}",
-                }
+                arguments = {}
+                tool_result = {"ok": False, "error": f"Invalid tool arguments JSON: {error}"}
             else:
                 tool_result = run_local_tool(function_name, arguments)
 
@@ -127,8 +106,8 @@ def run_responses_agent(
                     "iteration": iteration,
                     "tool_name": function_name,
                     "call_id": function_call.call_id,
-                    "arguments": arguments if "arguments" in locals() else {},
+                    "arguments": arguments,
                     "result": tool_result,
-                    "function_call_output": function_call_output,
+                    "output": function_call_output,
                 }
             )
