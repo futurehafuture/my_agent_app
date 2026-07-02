@@ -17,8 +17,10 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      webSecurity: false // 开发时避免跨域问题，生产环境需注意
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      webSecurity: !is.dev
     }
   })
 
