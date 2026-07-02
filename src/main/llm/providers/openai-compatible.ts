@@ -130,7 +130,6 @@ export class OpenAICompatibleProvider implements LlmProvider {
       handlers.onDone()
     } catch (err: any) {
       if (err?.name === 'AbortError') {
-        handlers.onDone()
         return
       }
       handlers.onError(err instanceof Error ? err : new Error('Stream error'))
