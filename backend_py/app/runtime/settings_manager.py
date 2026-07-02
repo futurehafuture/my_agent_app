@@ -32,8 +32,11 @@ def load_settings(mask_secrets: bool = False) -> dict[str, Any]:
 def save_settings(update: dict[str, Any]) -> dict[str, Any]:
     current = load_settings(mask_secrets=False)
     for key, value in update.items():
-        if key in DEFAULT_SETTINGS and value is not None:
-            current[key] = value
+        if key not in DEFAULT_SETTINGS or value is None:
+            continue
+        if key in SECRET_FIELDS and _looks_masked(str(value)):
+            continue
+        current[key] = value
     SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     SETTINGS_PATH.write_text(json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8")
     apply_settings_to_env(current)
@@ -54,6 +57,10 @@ def apply_settings_to_env(settings: dict[str, Any] | None = None) -> None:
         os.environ["DEEPSEEK_BASE_URL"] = str(settings["deepseek_base_url"])
     if settings.get("deepseek_model"):
         os.environ["DEEPSEEK_MODEL"] = str(settings["deepseek_model"])
+
+
+def _looks_masked(value: str) -> bool:
+    return value == "***" or "..." in value
 
 
 def _mask(settings: dict[str, Any]) -> dict[str, Any]:
