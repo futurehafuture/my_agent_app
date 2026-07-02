@@ -1,6 +1,32 @@
 # My Agent App
 
-A universal desktop Agent application that combines a polished Electron command-center UI with a Python Agent backend.
+A universal desktop Agent application built on **OpenAI Agents SDK**.
+
+## Architecture
+
+The backend now uses OpenAI Agents SDK as the primary execution layer:
+
+```text
+Electron UI
+  -> FastAPI
+  -> OpenAI Agents SDK Runner
+  -> Router Agent
+  -> handoff to specialist Agent
+  -> SDK function tools
+  -> sandbox/workspace artifacts
+```
+
+Specialist agents are real SDK `Agent` instances, not pipeline placeholders:
+
+- Router Agent: entry point; selects handoff target.
+- Code Agent: reads/writes sandbox repo files, validates, and produces diff.
+- Data Agent: summarizes copied CSV/XLSX files.
+- File Agent: scans approved folders and creates plan-only file operations.
+- PPT Agent: generates real PPTX artifacts.
+- Research Agent: runs browser search and writes research artifacts.
+- Chat Agent: handles ordinary questions.
+
+The SDK handles the core loop: turns, handoffs, tool calls, tool-result feedback, and final output. The app layer still owns Electron UI, local folder authorization, workspace preparation, diff apply approval, and artifact display.
 
 ## What works now
 
@@ -10,23 +36,14 @@ A universal desktop Agent application that combines a polished Electron command-
   - `/health`
   - `/tasks/plan`
   - `/tasks/run`
-- Router logic that classifies tasks.
-- Code Agent workflow:
-  - copies the authorized project into an isolated workspace
-  - inspects project structure
-  - detects likely build/test commands
-  - optionally runs a DeepSeek/OpenAI-compatible tool loop if API credentials are configured
-  - returns summary, events, artifacts, approvals, and diff
-- Data Agent workflow:
-  - copies authorized data into a workspace
-  - summarizes CSV/XLSX files when pandas/openpyxl are available
-- File Agent workflow:
-  - produces a plan for user-approved folders without moving/deleting files automatically
-- Safety boundaries:
-  - path guard
-  - command risk detector
-  - plan-first approvals
-  - sandbox/workspace copy before touching source projects
+  - `/tasks/stream`
+  - `/tasks/apply-diff`
+  - `/mcp/servers`
+  - `/browser/search`
+- OpenAI Agents SDK Router Agent with handoffs to specialist Agents.
+- SDK `function_tool` tools for file listing, reading, writing, command execution, diff generation, data summaries, PPTX export, browser search, and file planning.
+- Code tasks copy the authorized project into `agent_workspaces/.../repo` before tools can touch it.
+- Diff apply requires explicit confirmation.
 
 ## Development
 
@@ -49,17 +66,26 @@ uvicorn app.main:app --reload --port 8765
 
 Then open the Electron app and click **Run plan**.
 
-## DeepSeek configuration
+## Model configuration
 
-Create `backend_py/.env`:
+Default OpenAI provider:
+
+```bash
+export OPENAI_API_KEY=your_openai_key
+export AGENT_MODEL=gpt-4.1-mini
+```
+
+DeepSeek through the Agents SDK LiteLLM provider:
+
+```bash
+cp backend_py/.env.example backend_py/.env
+```
 
 ```bash
 DEEPSEEK_API_KEY=your_key_here
 DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_MODEL=deepseek/deepseek-chat
 ```
-
-Without a key, the app still runs in deterministic local mode so the UI/backend workflow can be tested.
 
 ## Safety model
 
@@ -71,10 +97,6 @@ The app should not grant an agent full computer access by default.
 4. Delete, overwrite, move, terminal commands, credential access, and real-project writes require approval.
 5. The UI shows tool calls, events, artifacts, and final diff before risky changes are applied.
 
-## Next production steps
+## Notes
 
-- Replace deterministic router with an LLM structured-output router.
-- Add real streaming via Server-Sent Events or WebSocket.
-- Add user approval endpoints for command execution and diff apply.
-- Add MCP server management.
-- Switch local workspaces to Docker or a hosted sandbox for stronger isolation.
+This branch is now structured around OpenAI Agents SDK rather than a custom tool loop. The next local validation step is to run the backend with a real `OPENAI_API_KEY` or DeepSeek/LiteLLM configuration and fix any SDK-version-specific import differences.
